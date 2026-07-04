@@ -156,4 +156,21 @@ export async function cancelQPayInvoice(invoiceId: string): Promise<void> {
 
 /**
  * Confirms payment after receiving the QPay callback. Call this from your
- * `callback_url` route handler — do NOT poll this on a c
+ * `callback_url` route handler — do NOT poll this on a cron job; QPay POSTs
+ * to your callback URL the moment the invoice is paid, cancelled, or expired.
+ */
+export async function confirmQPayPayment(invoiceId: string): Promise<QPayPaymentCheckResponse> {
+  const res = await authedFetch('/v2/payment/check', {
+    method: 'POST',
+    body: JSON.stringify({
+      object_type: 'INVOICE',
+      object_id: invoiceId,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`QPay payment check failed: ${res.status} ${await res.text()}`);
+  }
+
+  return res.json() as Promise<QPayPaymentCheckResponse>;
+}
