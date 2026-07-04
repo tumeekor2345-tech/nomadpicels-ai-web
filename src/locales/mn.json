@@ -1,0 +1,143 @@
+{
+  "Index": {
+    "meta_title": "NomadPixels AI - Секундын дотор гайхалтай AI зураг, видео үүсгэ",
+    "meta_description": "NomadPixels AI бол Монголд зориулсан AI контент студи — Flux загвараар зураг, Wan 2.2-оор видео үүсгэж, QPay, SocialPay, банкны картаар төлнө."
+  },
+  "Navbar": {
+    "sign_in": "Нэвтрэх",
+    "sign_up": "Бүртгүүлэх",
+    "product": "Бүтээгдэхүүн",
+    "pricing": "Үнэ",
+    "docs": "Заавар",
+    "blog": "Блог",
+    "about": "Бидний тухай"
+  },
+  "LocaleSwitcher": {
+    "button_label": "Хэл солих"
+  },
+  "Hero": {
+    "follow_twitter": "@NomadPixelsAI-г дагах",
+    "title": "Секундын дотор гайхалтай <important>AI зураг, видео</important> үүсгэ.",
+    "description": "NomadPixels AI таны санааг зураг (Flux) болон видео (Wan 2.2) болгон хувиргадаг, түрээсийн GPU дээр ажилладаг — QPay, SocialPay, Монголын банкны картаар төлбөрөө хийнэ.",
+    "primary_button": "Үнэгүй эхлэх",
+    "secondary_button": "Жишээ үзэх"
+  },
+  "Features": {
+    "section_subtitle": "Боломжууд",
+    "section_title": "AI контент үүсгэхэд хэрэгтэй бүх зүйл",
+    "section_description": "Текст промптоос эхлээд бэлэн зураг, видео хүртэл — хурдан, хямд, Монгол бүтээлчдэд зориулсан.",
+    "feature1_title": "Зураг үүсгэх (Flux)",
+    "feature2_title": "Видео үүсгэх (Wan 2.2)",
+    "feature3_title": "QPay / SocialPay / Банкны карт",
+    "feature4_title": "Кредит суурьтай үнэ",
+    "feature5_title": "Монгол хэл дээрх интерфейс",
+    "feature6_title": "Хурдан GPU рендер",
+    "feature_description": "Dashboard-аасаа шууд AI контент үүсгэж, урьдчилан харж, татаж авна уу."
+  },
+  "Pricing": {
+    "section_subtitle": "Үнэ",
+    "section_title": "Энгийн, кредит суурьтай үнэ",
+    "section_description": "Кредит худалдан аваад зураг, видео үүсгэхэд зарцуулна — сарын захиалга шаардлагагүй.",
+    "button_text": "Эхлэх"
+  },
+  "PricingPlans": {
+    "free_plan_name": "Үнэгүй",
+    "premium_plan_name": "Бүтээлч",
+    "enterprise_plan_name": "Студи"
+  },
+  "PricingCard": {
+    "free_plan_description": "NomadPixels AI-г турших",
+    "premium_plan_description": "Ганц бүтээлчдэд",
+    "enterprise_plan_description": "Баг, агентлагт",
+    "plan_price": "{price}₮",
+    "plan_interval_month": "/ сар",
+    "plan_interval_year": "/ жил"
+  },
+  "PricingFeatures": {
+    "feature_team_member": "Хамгийн ихдээ {number} гишүүн",
+    "feature_website": "Хамгийн ихдээ {number} төсөл",
+    "feature_storage": "{number} GB хадгалах сан",
+    "feature_transfer": "Сард {number} үүсгэлт",
+    "feature_email_support": "И-мэйл дэмжлэг"
+  },
+  "SponsorLogos": {
+    "sponsored_by": "Дэмжигч",
+    "clerk_logo": "Clerk лого",
+    "sentry_logo": "Sentry лого",
+    "crowdin_logo": "Crowdin лого",
+    "arcjet_logo": "Arcjet лого",
+    "coderabbit_logo": "CodeRabbit лого",
+    "nextjs_boilerplate_logo": "Next.js SaaS Boilerplate лого"
+  },
+  "FAQ": {
+    "question": "NomadPixels AI ямар загвар ашигладаг вэ?",
+    "answer": "Зургийг Flux (schnell), видеог Wan 2.2 загвараар үүсгэдэг бөгөөд хоёулаа түрээсийн RunPod GPU дээр ажилладаг."
+  },
+  "CTA": {
+    "title": "Бэлэн үү?",
+    "description": "Хэдхэн минутын дотор AI зураг, видео үүсгэж эхлээрэй.",
+    "button_text": "Үнэгүй эхлэх"
+  },
+  "Footer": {
+    "product": "Бүтээгдэхүүн",
+    "docs": "Заавар",
+    "blog": "Блог",
+    "community": "Нийгэмлэг",
+    "company": "Компани",
+    "terms_of_service": "Үйлчилгээний нөхцөл",
+    "privacy_policy": "Нууцлалын бодлого",
+    "footer_text": "© {year} {name}. <author></author>-тай хамт бүтээв."
+  },
+  "SignIn": {
+    "meta_title": "Нэвтрэх",
+    "meta_description": "NomadPixels AI акаунтдаа нэвтэрнэ үү."
+  },
+  "SignUp": {
+    "meta_title": "Бүртгүүлэх",
+    "meta_description": "NomadPixels AI акаунт үүсгэнэ үү."
+  },
+  "DashboardLayout": {
+    "meta_title": "NomadPixels AI Dashboard",
+    "meta_description": "AI зураг, видеогоо үүсгэж, удирдаж, татаж авна уу.",
+    "home": "Нүүр",
+    "create": "Үүсгэх",
+    "members": "Гишүүд",
+    "settings": "Тохиргоо"
+  },
+  "DashboardIndexPage": {
+    "title_bar": "Dashboard",
+    "title_bar_description": "NomadPixels AI-д тавтай морил",
+    "message_state_title": "Ажлаа эхлүүлье",
+    "message_state_description": "Create хуудаснаас шинэ зураг эсвэл видео үүсгэлт эхлүүлнэ үү.",
+    "message_state_alternative": "Тусламж хэрэгтэй юу? <url></url> руу хандана уу.",
+    "max_message": "Илүү кредит хэрэгтэй юу? Үнийн хуудсыг үзнэ үү."
+  },
+  "CreatePage": {
+    "title_bar": "Үүсгэх",
+    "title_bar_description": "AI зураг (Flux) эсвэл видео (Wan 2.2) үүсгэнэ үү",
+    "image_tab": "Зураг (Flux)",
+    "video_tab": "Видео (Wan 2.2)",
+    "prompt_label": "Тайлбар (prompt)",
+    "prompt_placeholder": "Юу харагдахыг хүсэж байгаагаа бичнэ үү...",
+    "image_url_label": "Эх зургийн URL",
+    "image_url_placeholder": "https://example.com/your-image.jpg",
+    "duration_label": "Үргэлжлэх хугацаа",
+    "submit": "Үүсгэх",
+    "submitting": "Эхлүүлж байна...",
+    "queued": "Дараалалд орлоо, GPU хүлээж байна...",
+    "in_progress": "Үүсгэж байна...",
+    "failed": "Үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
+    "flux_not_configured": "Зураг үүсгэх функц бүрэн тохируулагдаагүй байна — Flux workflow файл дутуу байна.",
+    "download_label": "Татаж авах",
+    "history_title": "Таны үүсгэсэн зураг/видео",
+    "history_empty": "Одоохондоо юу ч үүсгээгүй байна — дээрээс эхний зураг эсвэл видеогоо үүсгэж үзнэ үү."
+  },
+  "UserProfilePage": {
+    "title_bar": "Хэрэглэгчийн профайл",
+    "title_bar_description": "Профайлаа харах, удирдах"
+  },
+  "OrganizationProfilePage": {
+    "title_bar": "Байгууллагын удирдлага",
+    "title_bar_description": "Байгууллагаа удирдах"
+  }
+}

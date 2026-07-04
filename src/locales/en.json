@@ -1,0 +1,143 @@
+{
+  "Index": {
+    "meta_title": "NomadPixels AI - Create stunning AI images and videos in seconds",
+    "meta_description": "NomadPixels AI is an AI content studio for Mongolia — generate images with Flux and videos with Wan 2.2, pay with QPay, SocialPay, or your bank card."
+  },
+  "Navbar": {
+    "sign_in": "Sign in",
+    "sign_up": "Sign up",
+    "product": "Product",
+    "pricing": "Pricing",
+    "docs": "Docs",
+    "blog": "Blog",
+    "about": "About"
+  },
+  "LocaleSwitcher": {
+    "button_label": "Change language"
+  },
+  "Hero": {
+    "follow_twitter": "Follow @NomadPixelsAI",
+    "title": "Create stunning <important>AI images & videos</important> in seconds.",
+    "description": "NomadPixels AI turns your ideas into images (Flux) and videos (Wan 2.2), running on rented GPU power — with payment in QPay, SocialPay, and Mongolian bank cards.",
+    "primary_button": "Start creating for free",
+    "secondary_button": "See examples"
+  },
+  "Features": {
+    "section_subtitle": "Features",
+    "section_title": "Everything you need to create AI content",
+    "section_description": "From a text prompt to a finished image or video — fast, affordable, and built for Mongolian creators.",
+    "feature1_title": "Image generation (Flux)",
+    "feature2_title": "Video generation (Wan 2.2)",
+    "feature3_title": "QPay / SocialPay / Bank card",
+    "feature4_title": "Credit-based pricing",
+    "feature5_title": "Mongolian interface",
+    "feature6_title": "Fast GPU rendering",
+    "feature_description": "Generate, preview, and download your AI content directly from your dashboard."
+  },
+  "Pricing": {
+    "section_subtitle": "Pricing",
+    "section_title": "Simple, credit-based pricing",
+    "section_description": "Buy credits and spend them on image or video generations — no subscription required.",
+    "button_text": "Get started"
+  },
+  "PricingPlans": {
+    "free_plan_name": "Free",
+    "premium_plan_name": "Creator",
+    "enterprise_plan_name": "Studio"
+  },
+  "PricingCard": {
+    "free_plan_description": "For trying NomadPixels AI",
+    "premium_plan_description": "For individual creators",
+    "enterprise_plan_description": "For teams and agencies",
+    "plan_price": "${price}",
+    "plan_interval_month": "/ month",
+    "plan_interval_year": "/ year"
+  },
+  "PricingFeatures": {
+    "feature_team_member": "Up to {number} team members",
+    "feature_website": "Up to {number} projects",
+    "feature_storage": "{number} GB of storage",
+    "feature_transfer": "{number} generations / month",
+    "feature_email_support": "Email support"
+  },
+  "SponsorLogos": {
+    "sponsored_by": "Powered by",
+    "clerk_logo": "Clerk logo",
+    "sentry_logo": "Sentry logo",
+    "crowdin_logo": "Crowdin logo",
+    "arcjet_logo": "Arcjet logo",
+    "coderabbit_logo": "CodeRabbit logo",
+    "nextjs_boilerplate_logo": "Next.js SaaS Boilerplate logo"
+  },
+  "FAQ": {
+    "question": "What models does NomadPixels AI use?",
+    "answer": "Images are generated with Flux (schnell) and videos with Wan 2.2, both run on rented RunPod GPU infrastructure."
+  },
+  "CTA": {
+    "title": "Ready to create?",
+    "description": "Start generating AI images and videos in minutes.",
+    "button_text": "Start creating for free"
+  },
+  "Footer": {
+    "product": "Product",
+    "docs": "Docs",
+    "blog": "Blog",
+    "community": "Community",
+    "company": "Company",
+    "terms_of_service": "Terms Of Service",
+    "privacy_policy": "Privacy Policy",
+    "footer_text": "© {year} {name}. Made with <author></author>."
+  },
+  "SignIn": {
+    "meta_title": "Sign in",
+    "meta_description": "Sign in to your NomadPixels AI account."
+  },
+  "SignUp": {
+    "meta_title": "Sign up",
+    "meta_description": "Create your NomadPixels AI account."
+  },
+  "DashboardLayout": {
+    "meta_title": "NomadPixels AI Dashboard",
+    "meta_description": "Generate, manage, and download your AI images and videos.",
+    "home": "Home",
+    "create": "Create",
+    "members": "Members",
+    "settings": "Settings"
+  },
+  "DashboardIndexPage": {
+    "title_bar": "Dashboard",
+    "title_bar_description": "Welcome to NomadPixels AI",
+    "message_state_title": "Let's create something",
+    "message_state_description": "Start a new image or video generation from the Create page.",
+    "message_state_alternative": "Need help? Contact <url></url>.",
+    "max_message": "Need more credits? Check out our pricing page."
+  },
+  "CreatePage": {
+    "title_bar": "Create",
+    "title_bar_description": "Generate an AI image (Flux) or video (Wan 2.2)",
+    "image_tab": "Image (Flux)",
+    "video_tab": "Video (Wan 2.2)",
+    "prompt_label": "Prompt",
+    "prompt_placeholder": "Describe what you want to see...",
+    "image_url_label": "Source image URL",
+    "image_url_placeholder": "https://example.com/your-image.jpg",
+    "duration_label": "Duration",
+    "submit": "Generate",
+    "submitting": "Starting...",
+    "queued": "Queued, waiting for a GPU worker...",
+    "in_progress": "Generating...",
+    "failed": "Generation failed. Please try again.",
+    "flux_not_configured": "Image generation isn't fully configured yet — the Flux workflow file is missing.",
+    "download_label": "Download",
+    "history_title": "Your generations",
+    "history_empty": "Nothing generated yet — try creating your first image or video above."
+  },
+  "UserProfilePage": {
+    "title_bar": "User Profile",
+    "title_bar_description": "View and manage your user profile"
+  },
+  "OrganizationProfilePage": {
+    "title_bar": "Organization Management",
+    "title_bar_description": "Manage your organization"
+  }
+}
