@@ -23,11 +23,14 @@ type ToolLabels = {
   failed: string;
   downloadLabel: string;
   voiceUploadLabel: string;
+  voiceVeryDeep: string;
   voiceDeep: string;
-  voiceHigh: string;
   voiceFemale: string;
+  voiceHigh: string;
   voiceChild: string;
+  voiceRobot: string;
   voiceProcessing: string;
+  voicePlayOriginal: string;
 };
 
 /** Shared image-generation tool card (Photo Restore / Face Swap) — both take
@@ -154,12 +157,21 @@ function ImageToolCard(props: {
 }
 
 // --- Voice Changer: pure client-side pitch shift, no server/credits ------
-
+//
+// Technique: read the recording into an AudioBuffer, then re-render it
+// through an OfflineAudioContext with the AudioBufferSourceNode's
+// `playbackRate` changed. Reading a buffer faster/slower than it was
+// recorded raises/lowers its pitch (the classic "chipmunk" / "deep voice"
+// effect) — this only touches pitch+speed together, no AI involved.
+// "Robot" additionally runs a sample-and-hold step on the pitched buffer for
+// a distinctly robotic texture, not just a pitch change.
 const VOICE_PRESETS = [
-  { id: 'deep', rate: 0.8 },
-  { id: 'high', rate: 1.3 },
-  { id: 'female', rate: 1.15 },
-  { id: 'child', rate: 1.55 },
+  { id: 'verydeep', rate: 0.65, robot: false },
+  { id: 'deep', rate: 0.8, robot: false },
+  { id: 'female', rate: 1.2, robot: false },
+  { id: 'high', rate: 1.4, robot: false },
+  { id: 'child', rate: 1.7, robot: false },
+  { id: 'robot', rate: 0.9, robot: true },
 ] as const;
 
 function encodeWav(buffer: AudioBuffer): Blob {
@@ -209,10 +221,35 @@ function encodeWav(buffer: AudioBuffer): Blob {
   return new Blob([arrayBuffer], { type: 'audio/wav' });
 }
 
-async function pitchShiftFile(file: File, rate: number): Promise<Blob> {
+/** Sample-and-hold: repeats every Nth sample, giving a robotic/lo-fi texture
+ * distinct from a plain pitch shift. Mutates and returns the same buffer. */
+function applyRobotEffect(buffer: AudioBuffer): AudioBuffer {
+  const HOLD_SAMPLES = 7;
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    const data = buffer.getChannelData(ch);
+    let held = 0;
+    for (let i = 0; i < data.length; i++) {
+      if (i % HOLD_SAMPLES === 0) {
+        held = data[i] ?? 0;
+      }
+      data[i] = held;
+    }
+  }
+  return buffer;
+}
+
+async function pitchShiftFile(file: File, rate: number, robot: boolean): Promise<Blob> {
   const arrayBuffer = await file.arrayBuffer();
   const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const audioCtx = new AudioContextClass();
+
+  // iOS Safari can start a freshly created AudioContext in "suspended"
+  // state even inside a user-gesture click handler — make sure it's
+  // actually running before we decode/render through it.
+  if (audioCtx.state === 'suspended') {
+    await audioCtx.resume();
+  }
+
   const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
   const offlineCtx = new OfflineAudioContext(
@@ -225,41 +262,61 @@ async function pitchShiftFile(file: File, rate: number): Promise<Blob> {
   source.playbackRate.value = rate;
   source.connect(offlineCtx.destination);
   source.start();
-  const rendered = await offlineCtx.startRendering();
+  let rendered = await offlineCtx.startRendering();
   await audioCtx.close();
+
+  if (robot) {
+    rendered = applyRobotEffect(rendered);
+  }
+
   return encodeWav(rendered);
 }
 
 function VoiceChangerCard(props: { labels: ToolLabels }) {
   const { labels } = props;
   const [file, setFile] = useState<File | null>(null);
+  const [originalUrl, setOriginalUrl] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const resultUrlRef = useRef<string | null>(null);
 
   const presetLabel = (id: string) => {
+    if (id === 'verydeep') {
+      return labels.voiceVeryDeep;
+    }
     if (id === 'deep') {
       return labels.voiceDeep;
-    }
-    if (id === 'high') {
-      return labels.voiceHigh;
     }
     if (id === 'female') {
       return labels.voiceFemale;
     }
+    if (id === 'high') {
+      return labels.voiceHigh;
+    }
+    if (id === 'robot') {
+      return labels.voiceRobot;
+    }
     return labels.voiceChild;
   };
 
-  const handlePreset = async (id: string, rate: number) => {
+  const handlePreset = async (id: string, rate: number, robot: boolean) => {
     if (!file) {
       return;
     }
     setErrorText(null);
-    setResultUrl(null);
     setProcessing(id);
     try {
-      const blob = await pitchShiftFile(file, rate);
-      setResultUrl(URL.createObjectURL(blob));
+      const blob = await pitchShiftFile(file, rate, robot);
+      // Revoke the previous result's blob: URL before replacing it, and force
+      // the <audio> element to fully remount (via key) so the browser can't
+      // keep playing a cached/stale source when only the src attribute changes.
+      if (resultUrlRef.current) {
+        URL.revokeObjectURL(resultUrlRef.current);
+      }
+      const nextUrl = URL.createObjectURL(blob);
+      resultUrlRef.current = nextUrl;
+      setResultUrl(nextUrl);
     } catch {
       setErrorText(labels.failed);
     } finally {
@@ -281,12 +338,22 @@ function VoiceChangerCard(props: { labels: ToolLabels }) {
           type="file"
           accept="audio/*"
           onChange={(e) => {
-            setFile(e.target.files?.[0] ?? null);
+            const nextFile = e.target.files?.[0] ?? null;
+            setFile(nextFile);
             setResultUrl(null);
             setErrorText(null);
+            setOriginalUrl(nextFile ? URL.createObjectURL(nextFile) : null);
           }}
         />
       </div>
+
+      {originalUrl && (
+        <div className="flex flex-col gap-1.5">
+          <div className="text-xs text-muted-foreground">{labels.voicePlayOriginal}</div>
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <audio key={originalUrl} src={originalUrl} controls className="w-full" />
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {VOICE_PRESETS.map(preset => (
@@ -295,7 +362,7 @@ function VoiceChangerCard(props: { labels: ToolLabels }) {
             type="button"
             variant="outline"
             disabled={!file || processing !== null}
-            onClick={() => handlePreset(preset.id, preset.rate)}
+            onClick={() => handlePreset(preset.id, preset.rate, preset.robot)}
           >
             {processing === preset.id ? labels.voiceProcessing : presetLabel(preset.id)}
           </Button>
@@ -306,8 +373,10 @@ function VoiceChangerCard(props: { labels: ToolLabels }) {
 
       {resultUrl && (
         <div className="flex flex-col gap-2">
+          {/* key={resultUrl} forces a fresh <audio> element per result so the
+           * browser always loads the new blob instead of reusing a cached one. */}
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-          <audio src={resultUrl} controls className="w-full" />
+          <audio key={resultUrl} src={resultUrl} controls autoPlay className="w-full" />
           <a href={resultUrl} download="voice-changed.wav" className="text-sm text-primary underline">
             {labels.downloadLabel}
           </a>

@@ -35,11 +35,14 @@ export default async function ToolsPage(props: {
           failed: t('failed'),
           downloadLabel: t('download_label'),
           voiceUploadLabel: t('voice_upload_label'),
+          voiceVeryDeep: t('voice_very_deep'),
           voiceDeep: t('voice_deep'),
-          voiceHigh: t('voice_high'),
           voiceFemale: t('voice_female'),
+          voiceHigh: t('voice_high'),
           voiceChild: t('voice_child'),
+          voiceRobot: t('voice_robot'),
           voiceProcessing: t('voice_processing'),
+          voicePlayOriginal: t('voice_play_original'),
         }}
       />
     </>

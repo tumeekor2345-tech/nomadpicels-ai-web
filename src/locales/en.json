@@ -151,11 +151,14 @@
     "failed": "Something went wrong. Please try again.",
     "download_label": "Download",
     "voice_upload_label": "Choose an audio file",
+    "voice_very_deep": "Very deep",
     "voice_deep": "Deep",
-    "voice_high": "High",
     "voice_female": "Female",
+    "voice_high": "High",
     "voice_child": "Child",
-    "voice_processing": "Processing..."
+    "voice_robot": "Robot",
+    "voice_processing": "Processing...",
+    "voice_play_original": "Original recording (compare)"
   },
   "BillingPage": {
     "title_bar": "Billing",

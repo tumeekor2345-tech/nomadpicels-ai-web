@@ -151,11 +151,14 @@
     "failed": "Алдаа гарлаа. Дахин оролдоно уу.",
     "download_label": "Татаж авах",
     "voice_upload_label": "Аудио файл сонгох",
+    "voice_very_deep": "Маш бүдүүн",
     "voice_deep": "Бүдүүн/гүнзгий",
-    "voice_high": "Нарийн/өндөр",
     "voice_female": "Эмэгтэй",
+    "voice_high": "Нарийн/өндөр",
     "voice_child": "Хүүхэд",
-    "voice_processing": "Боловсруулж байна..."
+    "voice_robot": "Робот",
+    "voice_processing": "Боловсруулж байна...",
+    "voice_play_original": "Эх бичлэг (харьцуулж сонсоно уу)"
   },
   "BillingPage": {
     "title_bar": "Төлбөр",
