@@ -5,7 +5,7 @@ import { db } from '@/libs/DB';
 import { orderSchema } from '@/models/Schema';
 
 /** Polled by the billing page while the user has the QR open, waiting for the QPay webhook to flip status to PAID. */
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { userId } = await auth();
 
   if (!userId) {
