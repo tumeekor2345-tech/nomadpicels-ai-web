@@ -35,6 +35,7 @@ export const BillingClient = (props: {
   };
 }) => {
   const [balance, setBalance] = useState<number | null>(null);
+  const [balanceError, setBalanceError] = useState(false);
   const [loadingPackage, setLoadingPackage] = useState<PackageId | null>(null);
   const [checkout, setCheckout] = useState<CheckoutState>(null);
   const [orderStatus, setOrderStatus] = useState<'PENDING' | 'PAID' | 'TIMED_OUT' | null>(null);
@@ -42,10 +43,11 @@ export const BillingClient = (props: {
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refreshBalance = () => {
+    setBalanceError(false);
     fetch('/api/billing/balance')
       .then(res => res.json())
       .then(data => setBalance(typeof data.balance === 'number' ? data.balance : 0))
-      .catch(() => {});
+      .catch(() => setBalanceError(true));
   };
 
   useEffect(() => {
@@ -118,7 +120,25 @@ export const BillingClient = (props: {
     <div className="flex flex-col gap-6">
       <div className="rounded-md bg-card p-5">
         <div className="text-sm text-muted-foreground">{props.labels.balanceLabel}</div>
-        <div className="text-3xl font-semibold">{balance ?? '—'}</div>
+        <div className="text-3xl font-semibold">
+          {balance !== null
+            ? (
+                balance
+              )
+            : balanceError
+              ? (
+                  <button
+                    type="button"
+                    onClick={refreshBalance}
+                    className="text-base font-normal text-destructive underline"
+                  >
+                    {props.labels.failed}
+                  </button>
+                )
+              : (
+                  <span className="inline-block h-8 w-16 animate-pulse rounded bg-muted align-middle" />
+                )}
+        </div>
         <div className="mt-1 text-xs text-muted-foreground">{props.labels.creditCostNote}</div>
       </div>
 
