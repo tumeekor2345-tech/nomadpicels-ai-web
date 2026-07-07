@@ -1,24 +1,13 @@
 'use client';
 
+import type { CreditPackage, PackageId } from '@/libs/Pricing';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { CREDIT_PACKAGES } from '@/libs/Pricing';
 import { cn } from '@/utils/Helpers';
 
-type PackageId = 'starter' | 'active' | 'business';
-
-type Package = {
-  id: PackageId;
-  nameMn: string;
-  amountMnt: number;
-  credits: number;
-  descriptionMn: string;
-};
-
-const PACKAGES: Package[] = [
-  { id: 'starter', nameMn: 'Стартер', amountMnt: 10_000, credits: 100, descriptionMn: 'Нэг удаагийн худалдан авалт — туршиж эхлэхэд тохиромжтой' },
-  { id: 'active', nameMn: 'Идэвхтэй', amountMnt: 25_000, credits: 300, descriptionMn: 'Хамгийн түгээмэл сонголт' },
-  { id: 'business', nameMn: 'Бизнес', amountMnt: 60_000, credits: 800, descriptionMn: 'Агентлаг, дэлгүүрт зориулсан — тэргүүлэх дараалал' },
-];
+const STARTER_PACKAGES = CREDIT_PACKAGES.filter(pkg => pkg.isStarter);
+const BUNDLE_PACKAGES = CREDIT_PACKAGES.filter(pkg => !pkg.isStarter);
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 15 * 60 * 1000; // QPay invoices typically expire well within this window
@@ -89,7 +78,7 @@ export const BillingClient = (props: {
       });
   };
 
-  const handleBuy = async (pkg: Package) => {
+  const handleBuy = async (pkg: CreditPackage) => {
     setErrorText(null);
     setCheckout(null);
     setOrderStatus(null);
@@ -133,35 +122,68 @@ export const BillingClient = (props: {
         <div className="mt-1 text-xs text-muted-foreground">{props.labels.creditCostNote}</div>
       </div>
 
-      <div className="
-        grid grid-cols-1 gap-4
-        sm:grid-cols-3
-      "
-      >
-        {PACKAGES.map(pkg => (
-          <div key={pkg.id} className="flex flex-col justify-between gap-4 rounded-md bg-card p-5">
-            <div>
-              <div className="text-lg font-semibold">{pkg.nameMn}</div>
-              <div className="mt-1 text-2xl font-bold">
-                {pkg.amountMnt.toLocaleString('mn-MN')}
-                ₮
+      <div>
+        <div className="mb-2 text-sm font-medium text-muted-foreground">Стартер — нэг удаагийн QR төлбөр</div>
+        <div className="
+          grid grid-cols-1 gap-4
+          sm:grid-cols-2
+        "
+        >
+          {STARTER_PACKAGES.map(pkg => (
+            <div key={pkg.id} className="flex flex-col justify-between gap-3 rounded-md bg-card p-5">
+              <div>
+                <div className="text-lg font-semibold">{pkg.nameMn}</div>
+                <div className="mt-1 text-2xl font-bold">
+                  {pkg.amountMnt.toLocaleString('mn-MN')}
+                  ₮
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">{pkg.descriptionMn}</div>
               </div>
-              <div className="mt-1 text-sm text-muted-foreground">
-                {pkg.credits}
-                {' '}
-                кредит
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">{pkg.descriptionMn}</div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loadingPackage === pkg.id}
+                onClick={() => handleBuy(pkg)}
+              >
+                {loadingPackage === pkg.id ? props.labels.buying : props.labels.buy}
+              </Button>
             </div>
-            <Button
-              type="button"
-              disabled={loadingPackage === pkg.id}
-              onClick={() => handleBuy(pkg)}
-            >
-              {loadingPackage === pkg.id ? props.labels.buying : props.labels.buy}
-            </Button>
-          </div>
-        ))}
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-2 text-sm font-medium text-muted-foreground">Кредит багц</div>
+        <div className="
+          grid grid-cols-1 gap-4
+          sm:grid-cols-3
+        "
+        >
+          {BUNDLE_PACKAGES.map(pkg => (
+            <div key={pkg.id} className="flex flex-col justify-between gap-4 rounded-md bg-card p-5">
+              <div>
+                <div className="text-lg font-semibold">{pkg.nameMn}</div>
+                <div className="mt-1 text-2xl font-bold">
+                  {pkg.amountMnt.toLocaleString('mn-MN')}
+                  ₮
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {pkg.credits}
+                  {' '}
+                  кредит
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">{pkg.descriptionMn}</div>
+              </div>
+              <Button
+                type="button"
+                disabled={loadingPackage === pkg.id}
+                onClick={() => handleBuy(pkg)}
+              >
+                {loadingPackage === pkg.id ? props.labels.buying : props.labels.buy}
+              </Button>
+            </div>
+          ))}
+        </div>
       </div>
 
       {errorText && (

@@ -1,9 +1,9 @@
 import { useTranslations } from 'next-intl';
 import { buttonVariants } from '@/components/ui/buttonVariants';
-import { PricingCard } from '@/features/billing/PricingCard';
+import { CreditPricingCard } from '@/features/billing/CreditPricingCard';
 import { Section } from '@/features/landing/Section';
 import { Link } from '@/libs/I18nNavigation';
-import { AllPlans } from '@/utils/PricingPlans';
+import { CREDIT_PACKAGES } from '@/libs/Pricing';
 
 export const Pricing = () => {
   const t = useTranslations('Pricing');
@@ -20,10 +20,10 @@ export const Pricing = () => {
         @4xl:grid-cols-3
       "
       >
-        {AllPlans.map(plan => (
-          <PricingCard
-            key={plan.name}
-            plan={plan}
+        {CREDIT_PACKAGES.map(pkg => (
+          <CreditPricingCard
+            key={pkg.id}
+            pkg={pkg}
             button={(
               <Link
                 className={buttonVariants({
