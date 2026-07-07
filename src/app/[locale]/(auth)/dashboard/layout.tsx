@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import { auth } from '@clerk/nextjs/server';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { DashboardHeader } from '@/features/dashboard/DashboardHeader';
+import { isAdminUser } from '@/libs/Admin';
 
 type DashboardLayoutProps = {
   params: Promise<{ locale: string }>;
@@ -28,6 +30,9 @@ export default async function DashboardLayout(props: DashboardLayoutProps) {
     locale,
     namespace: 'DashboardLayout',
   });
+
+  const { userId } = await auth();
+  const showAdminLink = await isAdminUser(userId);
 
   return (
     <>
@@ -62,6 +67,12 @@ export default async function DashboardLayout(props: DashboardLayoutProps) {
                 href: '/dashboard/organization-profile',
                 label: t('settings'),
               },
+              ...(showAdminLink
+                ? [{
+                    href: '/dashboard/admin',
+                    label: t('admin'),
+                  }]
+                : []),
             ]}
           />
         </div>

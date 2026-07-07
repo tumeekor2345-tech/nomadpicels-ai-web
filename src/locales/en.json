@@ -112,7 +112,8 @@
     "tools": "Tools",
     "billing": "Billing",
     "members": "Members",
-    "settings": "Settings"
+    "settings": "Settings",
+    "admin": "Admin"
   },
   "DashboardIndexPage": {
     "title_bar": "Dashboard",
@@ -187,5 +188,28 @@
   "OrganizationProfilePage": {
     "title_bar": "Organization Management",
     "title_bar_description": "Manage your organization"
+  },
+  "AdminPage": {
+    "title_bar": "Admin",
+    "title_bar_description": "Business overview — owner only",
+    "range_day": "1 day",
+    "range_week": "7 days",
+    "range_month": "1 month",
+    "range_3_months": "3 months",
+    "new_users": "New users",
+    "total_users": "Total users",
+    "revenue": "Revenue",
+    "credits_sold": "Credits sold",
+    "paid_orders": "Paid orders",
+    "total_generations": "Total generations",
+    "generations_by_kind": "Generations by type",
+    "kind_flux": "Image (Flux)",
+    "kind_wan": "Video (Wan 2.2)",
+    "kind_photo_restore": "Photo restore",
+    "kind_face_swap": "Face swap",
+    "recent_orders": "Recent paid orders",
+    "recent_orders_empty": "No paid orders yet.",
+    "loading": "Loading...",
+    "failed": "Couldn't load stats. Please try again."
   }
 }

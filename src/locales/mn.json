@@ -112,7 +112,8 @@
     "tools": "Tools",
     "billing": "Төлбөр",
     "members": "Гишүүд",
-    "settings": "Тохиргоо"
+    "settings": "Тохиргоо",
+    "admin": "Админ"
   },
   "DashboardIndexPage": {
     "title_bar": "Dashboard",
@@ -187,5 +188,28 @@
   "OrganizationProfilePage": {
     "title_bar": "Байгууллагын удирдлага",
     "title_bar_description": "Байгууллагаа удирдах"
+  },
+  "AdminPage": {
+    "title_bar": "Админ",
+    "title_bar_description": "Бизнесийн ерөнхий байдал — зөвхөн эзэмшигчид",
+    "range_day": "1 өдөр",
+    "range_week": "7 хоног",
+    "range_month": "1 сар",
+    "range_3_months": "3 сар",
+    "new_users": "Шинэ хэрэглэгч",
+    "total_users": "Нийт хэрэглэгч",
+    "revenue": "Орлого",
+    "credits_sold": "Зарагдсан кредит",
+    "paid_orders": "Төлсөн захиалга",
+    "total_generations": "Нийт үүсгэлт",
+    "generations_by_kind": "Үүсгэлт төрлөөр",
+    "kind_flux": "Зураг (Flux)",
+    "kind_wan": "Видео (Wan 2.2)",
+    "kind_photo_restore": "Зураг сэргээх",
+    "kind_face_swap": "Царай солих",
+    "recent_orders": "Сүүлийн төлсөн захиалгууд",
+    "recent_orders_empty": "Одоохондоо төлсөн захиалга алга.",
+    "loading": "Ачааллаж байна...",
+    "failed": "Мэдээлэл ачаалахад алдаа гарлаа. Дахин оролдоно уу."
   }
 }

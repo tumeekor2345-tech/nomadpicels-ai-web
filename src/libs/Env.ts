@@ -36,6 +36,12 @@ export const Env = createEnv({
     // --- SocialPay / Bank card gateway (Phase 2 — not required for MVP) ---
     // SOCIALPAY_MERCHANT_ID: z.string().optional(),
     // SOCIALPAY_API_KEY: z.string().optional(),
+
+    // --- Admin dashboard access (src/libs/Admin.ts) ---
+    // Comma-separated list of Clerk account emails allowed to view
+    // /dashboard/admin. Optional — src/libs/Admin.ts also has a hardcoded
+    // fallback owner email, so the admin page works even before this is set.
+    ADMIN_EMAILS: z.string().optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().optional(),
@@ -59,6 +65,7 @@ export const Env = createEnv({
     QPAY_CLIENT_ID: process.env.QPAY_CLIENT_ID,
     QPAY_CLIENT_SECRET: process.env.QPAY_CLIENT_SECRET,
     QPAY_INVOICE_CODE: process.env.QPAY_INVOICE_CODE,
+    ADMIN_EMAILS: process.env.ADMIN_EMAILS,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
