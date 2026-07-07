@@ -1,9 +1,21 @@
 import type { Metadata, Viewport } from 'next';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
+import { Noto_Sans } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import { routing } from '@/libs/I18nRouting';
 import '@/styles/global.css';
+
+// Noto Sans is used (rather than a more "designer" Google Font) because it's
+// one of the few families that guarantees full Mongolian Cyrillic coverage,
+// including the extra letters Өө / Үү that plain "cyrillic"-subset fonts
+// often drop, which would otherwise cause silent mid-word font fallback.
+const notoSans = Noto_Sans({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-noto-sans',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   icons: [
@@ -52,8 +64,8 @@ export default async function RootLayout(props: {
   setRequestLocale(locale);
 
   return (
-    <html lang={locale} suppressHydrationWarning>
-      <body>
+    <html lang={locale} className={notoSans.variable} suppressHydrationWarning>
+      <body className="font-sans">
         <NextIntlClientProvider>
           {props.children}
         </NextIntlClientProvider>
