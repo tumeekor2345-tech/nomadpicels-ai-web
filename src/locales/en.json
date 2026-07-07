@@ -111,8 +111,7 @@
     "create": "Create",
     "tools": "Tools",
     "billing": "Billing",
-    "members": "Members",
-    "settings": "Settings",
+    "settings": "Organization",
     "admin": "Admin"
   },
   "DashboardIndexPage": {
