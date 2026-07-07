@@ -109,9 +109,9 @@
     "title_bar": "Dashboard",
     "title_bar_description": "Welcome to NomadPixels AI",
     "message_state_title": "Let's create something",
-    "message_state_description": "Start a new image or video generation from the Create page.",
-    "message_state_alternative": "Need help? Contact <url></url>.",
-    "max_message": "Need more credits? Check out our pricing page."
+    "message_state_description_plain": "Start a new image (Flux) or video (Wan 2.2) generation, or buy a credit package.",
+    "cta_create": "Create",
+    "cta_billing": "Buy credits"
   },
   "CreatePage": {
     "title_bar": "Create",

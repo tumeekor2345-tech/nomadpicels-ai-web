@@ -109,9 +109,9 @@
     "title_bar": "Dashboard",
     "title_bar_description": "NomadPixels AI-д тавтай морил",
     "message_state_title": "Ажлаа эхлүүлье",
-    "message_state_description": "Create хуудаснаас шинэ зураг эсвэл видео үүсгэлт эхлүүлнэ үү.",
-    "message_state_alternative": "Тусламж хэрэгтэй юу? <url></url> руу хандана уу.",
-    "max_message": "Илүү кредит хэрэгтэй юу? Үнийн хуудсыг үзнэ үү."
+    "message_state_description_plain": "Шинэ зураг (Flux) эсвэл видео (Wan 2.2) үүсгэж эхлээрэй, эсвэл кредит багц худалдан аваарай.",
+    "cta_create": "Үүсгэх",
+    "cta_billing": "Кредит худалдан авах"
   },
   "CreatePage": {
     "title_bar": "Үүсгэх",

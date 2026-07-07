@@ -1,7 +1,8 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { Button } from '@/components/ui/button';
 import { PageMessage } from '@/features/dashboard/PageMessage';
 import { TitleBar } from '@/features/dashboard/TitleBar';
-import { SponsorLogos } from '@/features/sponsors/SponsorLogos';
+import { Link } from '@/libs/I18nNavigation';
 
 export default async function DashboardIndexPage(props: {
   params: Promise<{ locale: string }>;
@@ -34,54 +35,16 @@ export default async function DashboardIndexPage(props: {
           </svg>
         )}
         title={t('message_state_title')}
-        description={t.rich('message_state_description', {
-          code: chunks => (
-            <code className="bg-secondary text-secondary-foreground">
-              {chunks}
-            </code>
-          ),
-        })}
+        description={t('message_state_description_plain')}
         button={(
-          <>
-            <div className="
-              mt-2 text-sm font-light whitespace-pre-wrap text-muted-foreground
-            "
-            >
-              {t.rich('message_state_alternative', {
-                url: () => (
-                  <a
-                    className="
-                      text-blue-500
-                      hover:text-blue-600
-                    "
-                    href="https://nextjs-boilerplate.com/pro-saas-starter-kit"
-                  >
-                    Next.js Boilerplate SaaS
-                  </a>
-                ),
-              })}
-
-              <p>
-                {t.rich('max_message', {
-                  url: () => (
-                    <a
-                      className="
-                        text-blue-500
-                        hover:text-blue-600
-                      "
-                      href="https://nextjs-boilerplate.com/nextjs-multi-tenant-saas-boilerplate"
-                    >
-                      Next.js Boilerplate Max
-                    </a>
-                  ),
-                })}
-              </p>
-            </div>
-
-            <div className="mt-7">
-              <SponsorLogos />
-            </div>
-          </>
+          <div className="flex items-center justify-center gap-3">
+            <Button asChild>
+              <Link href="/dashboard/create">{t('cta_create')}</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/billing">{t('cta_billing')}</Link>
+            </Button>
+          </div>
         )}
       />
     </>
