@@ -8,6 +8,8 @@ import { isPromptBlocked } from '@/libs/ContentModeration';
 import { db } from '@/libs/DB';
 import { CREDIT_COST } from '@/libs/Pricing';
 import {
+  buildFaceSwapInput,
+  buildFluxImg2ImgInput,
   buildFluxInput,
   buildWanInput,
   submitRunPodJob,
@@ -15,16 +17,26 @@ import {
 import { creditBalanceSchema, generationSchema } from '@/models/Schema';
 
 /**
- * Starts a generation job (Flux image or Wan 2.2 video) and returns the
- * RunPod job id immediately. The client polls GET /api/generate/status for
- * status, since video generation can take well over typical serverless HTTP
- * timeouts.
+ * Starts a generation job (Flux image, Wan 2.2 video, or a one-click "Tools"
+ * job — photo restore / face swap) and returns the RunPod job id
+ * immediately. The client polls GET /api/generate/status for status, since
+ * video generation can take well over typical serverless HTTP timeouts.
  */
 
 const FLUX_WORKFLOW_PATH = path.join(
   process.cwd(),
   'src/libs/workflows/flux-schnell-txt2img.json',
 );
+
+const FLUX_IMG2IMG_WORKFLOW_PATH = path.join(
+  process.cwd(),
+  'src/libs/workflows/flux-schnell-img2img.json',
+);
+
+// Preset prompts for the one-click "Tools" — the whole point is the user
+// never has to type a prompt, so these are fixed server-side.
+const PHOTO_RESTORE_PROMPT = 'restore and enhance this old photograph: remove scratches and noise, correct faded colors, sharpen details, keep the original composition and people unchanged';
+const FACE_SWAP_PROMPT = 'a natural professional portrait photo, studio lighting, high detail, realistic';
 
 // Anti-abuse stopgap until real credit/subscription billing (QPay) is wired
 // up. Not tied to the pricing page's per-plan limits yet — just a blunt cap
@@ -37,6 +49,26 @@ function loadFluxWorkflow(): ComfyUIWorkflow | null {
   }
 
   return JSON.parse(fs.readFileSync(FLUX_WORKFLOW_PATH, 'utf-8'));
+}
+
+function loadFluxImg2ImgWorkflow(): ComfyUIWorkflow | null {
+  if (!fs.existsSync(FLUX_IMG2IMG_WORKFLOW_PATH)) {
+    return null;
+  }
+
+  return JSON.parse(fs.readFileSync(FLUX_IMG2IMG_WORKFLOW_PATH, 'utf-8'));
+}
+
+/** Fetches an image URL server-side and returns it as base64 (no external
+ * hosting needed — worker-comfyui accepts base64 images in its `images`
+ * array and loads them into ComfyUI's input folder before running). */
+async function fetchImageAsBase64(imageUrl: string): Promise<string> {
+  const res = await fetch(imageUrl);
+  if (!res.ok) {
+    throw new Error(`Could not fetch imageUrl (${res.status}).`);
+  }
+  const buffer = Buffer.from(await res.arrayBuffer());
+  return buffer.toString('base64');
 }
 
 async function countGenerationsToday(ownerId: string): Promise<number> {
@@ -87,28 +119,33 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
+  const VALID_KINDS = ['flux', 'wan', 'photo_restore', 'face_swap'];
 
-  if (!body || (body.kind !== 'flux' && body.kind !== 'wan')) {
+  if (!body || !VALID_KINDS.includes(body.kind)) {
     return NextResponse.json(
-      { error: 'Request body must include kind: "flux" | "wan".' },
+      { error: `Request body must include kind: ${VALID_KINDS.map(k => `"${k}"`).join(' | ')}.` },
       { status: 400 },
     );
   }
 
-  if (!body.prompt || typeof body.prompt !== 'string') {
+  // "Tools" (photo_restore, face_swap) are one-click — the server fills in a
+  // fixed prompt, the user never types one. flux/wan still require a prompt.
+  const needsUserPrompt = body.kind === 'flux' || body.kind === 'wan';
+  if (needsUserPrompt && (!body.prompt || typeof body.prompt !== 'string')) {
     return NextResponse.json({ error: 'prompt is required.' }, { status: 400 });
   }
 
-  if (isPromptBlocked(body.prompt)) {
+  if (needsUserPrompt && isPromptBlocked(body.prompt)) {
     return NextResponse.json(
       { error: 'prompt_blocked', message: 'This prompt violates our content policy.' },
       { status: 400 },
     );
   }
 
-  if (body.kind === 'wan' && (!body.imageUrl || typeof body.imageUrl !== 'string')) {
+  const needsImageUrl = body.kind === 'wan' || body.kind === 'photo_restore' || body.kind === 'face_swap';
+  if (needsImageUrl && (!body.imageUrl || typeof body.imageUrl !== 'string')) {
     return NextResponse.json(
-      { error: 'imageUrl is required (Wan 2.2 is image-to-video).' },
+      { error: 'imageUrl is required.' },
       { status: 400 },
     );
   }
@@ -127,10 +164,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const img2imgWorkflow = body.kind === 'photo_restore' ? loadFluxImg2ImgWorkflow() : null;
+  if (body.kind === 'photo_restore' && !img2imgWorkflow) {
+    return NextResponse.json(
+      {
+        error: 'img2img_workflow_not_configured',
+        message: 'src/libs/workflows/flux-schnell-img2img.json is missing.',
+      },
+      { status: 501 },
+    );
+  }
+
   // Paying users: spend credits and skip the free daily cap entirely.
   // Free users (no credits, or insufficient balance): fall back to the
   // existing anti-abuse daily limit.
-  const creditCost = CREDIT_COST[body.kind as 'flux' | 'wan'];
+  const creditCost = CREDIT_COST[body.kind as keyof typeof CREDIT_COST];
   const paidWithCredits = await trySpendCredits(userId, creditCost);
 
   if (!paidWithCredits) {
@@ -169,28 +217,72 @@ export async function POST(request: Request) {
       return NextResponse.json({ kind: 'flux', jobId: job.id, status: job.status, generationId: row?.id });
     }
 
-    // kind === 'wan'
-    const input = buildWanInput({
-      prompt: body.prompt,
+    if (body.kind === 'wan') {
+      const input = buildWanInput({
+        prompt: body.prompt,
+        imageUrl: body.imageUrl,
+        negativePrompt: body.negativePrompt,
+        durationSeconds: body.durationSeconds,
+        size: body.size,
+        seed: body.seed,
+      });
+
+      const job = await submitRunPodJob('wan', input);
+
+      const [row] = await db.insert(generationSchema).values({
+        ownerId: userId,
+        orgId: orgId ?? null,
+        kind: 'wan',
+        prompt: body.prompt,
+        jobId: job.id,
+        status: job.status,
+      }).returning({ id: generationSchema.id });
+
+      return NextResponse.json({ kind: 'wan', jobId: job.id, status: job.status, generationId: row?.id });
+    }
+
+    if (body.kind === 'photo_restore') {
+      const imageBase64 = await fetchImageAsBase64(body.imageUrl);
+      const input = buildFluxImg2ImgInput(img2imgWorkflow!, {
+        prompt: PHOTO_RESTORE_PROMPT,
+        imageBase64,
+        denoise: body.denoise,
+      });
+
+      // Runs on the same RunPod endpoint as regular Flux — only the
+      // workflow graph sent in the request differs.
+      const job = await submitRunPodJob('flux', input);
+
+      const [row] = await db.insert(generationSchema).values({
+        ownerId: userId,
+        orgId: orgId ?? null,
+        kind: 'photo_restore',
+        prompt: PHOTO_RESTORE_PROMPT,
+        jobId: job.id,
+        status: job.status,
+      }).returning({ id: generationSchema.id });
+
+      return NextResponse.json({ kind: 'photo_restore', jobId: job.id, status: job.status, generationId: row?.id });
+    }
+
+    // kind === 'face_swap'
+    const input = buildFaceSwapInput({
+      prompt: FACE_SWAP_PROMPT,
       imageUrl: body.imageUrl,
-      negativePrompt: body.negativePrompt,
-      durationSeconds: body.durationSeconds,
-      size: body.size,
-      seed: body.seed,
     });
 
-    const job = await submitRunPodJob('wan', input);
+    const job = await submitRunPodJob('faceswap', input);
 
     const [row] = await db.insert(generationSchema).values({
       ownerId: userId,
       orgId: orgId ?? null,
-      kind: 'wan',
-      prompt: body.prompt,
+      kind: 'face_swap',
+      prompt: FACE_SWAP_PROMPT,
       jobId: job.id,
       status: job.status,
     }).returning({ id: generationSchema.id });
 
-    return NextResponse.json({ kind: 'wan', jobId: job.id, status: job.status, generationId: row?.id });
+    return NextResponse.json({ kind: 'face_swap', jobId: job.id, status: job.status, generationId: row?.id });
   } catch (error) {
     // The job never made it to RunPod — refund any credits we spent above,
     // since the user got nothing for them. Free-tier requests (paidWithCredits

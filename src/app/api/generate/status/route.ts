@@ -8,9 +8,23 @@ import { generationSchema } from '@/models/Schema';
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED', 'CANCELLED', 'TIMED_OUT']);
 
+/** Maps our app-level `generation.kind` (flux/wan/photo_restore/face_swap)
+ * to the RunPod endpoint it actually runs on — photo_restore shares the
+ * Flux endpoint (same worker, different workflow graph), so it isn't its
+ * own RunPod GenerationKind. */
+function toRunPodKind(dbKind: string): GenerationKind {
+  if (dbKind === 'wan') {
+    return 'wan';
+  }
+  if (dbKind === 'face_swap') {
+    return 'faceswap';
+  }
+  return 'flux'; // 'flux' and 'photo_restore'
+}
+
 /**
  * Polls the status of a job previously started via POST /api/generate.
- * Usage: GET /api/generate/status?kind=flux|wan&jobId=...
+ * Usage: GET /api/generate/status?kind=flux|wan|photo_restore|face_swap&jobId=...
  */
 export async function GET(request: Request) {
   const { userId } = await auth();
@@ -20,12 +34,8 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const kind = searchParams.get('kind') as GenerationKind | null;
   const jobId = searchParams.get('jobId');
 
-  if (kind !== 'flux' && kind !== 'wan') {
-    return NextResponse.json({ error: 'kind must be "flux" or "wan".' }, { status: 400 });
-  }
   if (!jobId) {
     return NextResponse.json({ error: 'jobId is required.' }, { status: 400 });
   }
@@ -43,7 +53,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const status = await getRunPodJobStatus(kind, jobId);
+    const status = await getRunPodJobStatus(toRunPodKind(row.kind), jobId);
 
     if (TERMINAL_STATUSES.has(status.status) && row.status !== status.status) {
       await db.update(generationSchema)

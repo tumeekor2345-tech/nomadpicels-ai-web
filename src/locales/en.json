@@ -101,6 +101,7 @@
     "meta_description": "Generate, manage, and download your AI images and videos.",
     "home": "Home",
     "create": "Create",
+    "tools": "Tools",
     "billing": "Billing",
     "members": "Members",
     "settings": "Settings"
@@ -132,6 +133,29 @@
     "download_label": "Download",
     "history_title": "Your generations",
     "history_empty": "Nothing generated yet — try creating your first image or video above."
+  },
+  "ToolsPage": {
+    "title_bar": "Tools",
+    "title_bar_description": "No prompt needed — one click and done",
+    "restore_title": "Photo Restore",
+    "restore_description": "Cleans up an old or damaged photo and restores its colors",
+    "face_swap_title": "Face Swap",
+    "face_swap_description": "Generates a new portrait using the face from your photo",
+    "voice_title": "Voice Changer",
+    "voice_description": "Turns a recording into a deep, high, female, or child voice (not AI)",
+    "image_url_placeholder": "https://example.com/photo.jpg",
+    "run": "Run",
+    "running": "Running...",
+    "queued": "Queued...",
+    "in_progress": "Processing...",
+    "failed": "Something went wrong. Please try again.",
+    "download_label": "Download",
+    "voice_upload_label": "Choose an audio file",
+    "voice_deep": "Deep",
+    "voice_high": "High",
+    "voice_female": "Female",
+    "voice_child": "Child",
+    "voice_processing": "Processing..."
   },
   "BillingPage": {
     "title_bar": "Billing",

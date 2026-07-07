@@ -101,6 +101,7 @@
     "meta_description": "AI зураг, видеогоо үүсгэж, удирдаж, татаж авна уу.",
     "home": "Нүүр",
     "create": "Үүсгэх",
+    "tools": "Tools",
     "billing": "Төлбөр",
     "members": "Гишүүд",
     "settings": "Тохиргоо"
@@ -132,6 +133,29 @@
     "download_label": "Татаж авах",
     "history_title": "Таны үүсгэсэн зураг/видео",
     "history_empty": "Одоохондоо юу ч үүсгээгүй байна — дээрээс эхний зураг эсвэл видеогоо үүсгэж үзнэ үү."
+  },
+  "ToolsPage": {
+    "title_bar": "Tools",
+    "title_bar_description": "Prompt бичихгүйгээр — нэг товч дараад шийднэ",
+    "restore_title": "Зураг сэргээх",
+    "restore_description": "Хуучин, гэмтэлтэй зургийг цэвэрлэж, өнгийг сэргээнэ",
+    "face_swap_title": "Царай солих",
+    "face_swap_description": "Зурган дээрх царайг ашиглан шинэ портрет үүсгэнэ",
+    "voice_title": "Хоолойны өнгө хувиргах",
+    "voice_description": "Бичлэгийн хоолойг бүдүүн, нарийн, эмэгтэй, хүүхдийн хоолой болгож хувиргана (AI биш)",
+    "image_url_placeholder": "https://example.com/photo.jpg",
+    "run": "Эхлүүлэх",
+    "running": "Ажиллаж байна...",
+    "queued": "Дараалалд орлоо...",
+    "in_progress": "Боловсруулж байна...",
+    "failed": "Алдаа гарлаа. Дахин оролдоно уу.",
+    "download_label": "Татаж авах",
+    "voice_upload_label": "Аудио файл сонгох",
+    "voice_deep": "Бүдүүн/гүнзгий",
+    "voice_high": "Нарийн/өндөр",
+    "voice_female": "Эмэгтэй",
+    "voice_child": "Хүүхэд",
+    "voice_processing": "Боловсруулж байна..."
   },
   "BillingPage": {
     "title_bar": "Төлбөр",

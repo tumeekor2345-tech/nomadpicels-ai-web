@@ -69,4 +69,6 @@ export function getPackage(id: string): CreditPackage | undefined {
 export const CREDIT_COST = {
   flux: 1,
   wan: 8,
+  photo_restore: 2,
+  face_swap: 3,
 } as const;

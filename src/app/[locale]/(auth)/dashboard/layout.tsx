@@ -47,6 +47,10 @@ export default async function DashboardLayout(props: DashboardLayoutProps) {
                 label: t('create'),
               },
               {
+                href: '/dashboard/tools',
+                label: t('tools'),
+              },
+              {
                 href: '/dashboard/billing',
                 label: t('billing'),
               },

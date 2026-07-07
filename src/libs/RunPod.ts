@@ -28,7 +28,7 @@ import { Env } from '@/libs/Env';
 
 const RUNPOD_BASE_URL = 'https://api.runpod.ai/v2';
 
-export type GenerationKind = 'flux' | 'wan';
+export type GenerationKind = 'flux' | 'wan' | 'faceswap';
 
 export type RunPodJobStatus = {
   id: string;
@@ -56,11 +56,14 @@ function requireRunPodEnv() {
 
 function endpointIdFor(kind: GenerationKind): string {
   requireRunPodEnv();
-  const endpointId = kind === 'flux' ? Env.RUNPOD_FLUX_ENDPOINT_ID : Env.RUNPOD_WAN_ENDPOINT_ID;
+  const endpointId = kind === 'flux'
+    ? Env.RUNPOD_FLUX_ENDPOINT_ID
+    : kind === 'wan'
+      ? Env.RUNPOD_WAN_ENDPOINT_ID
+      : Env.RUNPOD_FACESWAP_ENDPOINT_ID;
   if (!endpointId) {
-    throw new Error(
-      `RUNPOD_${kind === 'flux' ? 'FLUX' : 'WAN'}_ENDPOINT_ID is not set. Add it to .env.local.`,
-    );
+    const varName = kind === 'flux' ? 'RUNPOD_FLUX_ENDPOINT_ID' : kind === 'wan' ? 'RUNPOD_WAN_ENDPOINT_ID' : 'RUNPOD_FACESWAP_ENDPOINT_ID';
+    throw new Error(`${varName} is not set. Add it to .env.local.`);
   }
   return endpointId;
 }
@@ -270,4 +273,76 @@ export function buildWanInput(params: {
     enable_prompt_optimization: params.enablePromptOptimization ?? false,
     enable_safety_checker: params.enableSafetyChecker ?? true,
   };
+}
+
+// --- "Tools" feature: one-click photo restore + face swap ---------------
+
+/**
+ * Builds the input for an img2img Flux run (Photo Restore tool) —
+ * `src/libs/workflows/flux-schnell-img2img.json` is the same graph as the
+ * txt2img workflow with a LoadImage -> VAEEncode branch feeding the sampler's
+ * latent_image instead of EmptyLatentImage, and a partial `denoise` so the
+ * output stays close to the input photo. The uploaded image is sent as
+ * base64 in the `images` array (worker-comfyui uploads it into ComfyUI's
+ * input folder under this same filename before running the workflow), so no
+ * external image hosting is needed.
+ */
+export function buildFluxImg2ImgInput(
+  workflow: ComfyUIWorkflow,
+  params: { prompt: string; imageBase64: string; denoise?: number; seed?: number },
+) {
+  const FLUX_PROMPT_NODE_ID = '6'; // CLIPTextEncode (prompt)
+  const FLUX_SEED_NODE_ID = '25'; // RandomNoise
+  const FLUX_DENOISE_NODE_ID = '17'; // BasicScheduler
+  const FLUX_LOAD_IMAGE_NODE_ID = '30'; // LoadImage (added for img2img)
+  const imageName = 'input.png';
+
+  const patched = patchWorkflow(workflow, {
+    [FLUX_PROMPT_NODE_ID]: { text: params.prompt },
+    [FLUX_SEED_NODE_ID]: { noise_seed: params.seed ?? Math.floor(Math.random() * 1_000_000_000_000) },
+    [FLUX_DENOISE_NODE_ID]: { denoise: params.denoise ?? 0.55 },
+    [FLUX_LOAD_IMAGE_NODE_ID]: { image: imageName },
+  });
+
+  return {
+    workflow: patched,
+    images: [{ name: imageName, image: params.imageBase64 }],
+  };
+}
+
+/**
+ * Builds the input for `runpod/comfyui-faceswap-sdxl` (Face Swap tool) —
+ * see https://github.com/runpod-workers/comfyui-faceswap-sdxl. Unlike the
+ * Flux worker-comfyui endpoint, this is a purpose-built handler with its own
+ * simple JSON schema (no raw ComfyUI workflow graph): give it a character
+ * `prompt` plus a reference `image_url` and it generates a new portrait
+ * carrying that face (IPAdapter + InstantID under the hood).
+ */
+export function buildFaceSwapInput(params: {
+  prompt: string;
+  imageUrl: string;
+  negativePrompt?: string;
+  width?: number;
+  height?: number;
+  steps?: number;
+  cfg?: number;
+  seed?: number;
+}) {
+  return {
+    prompt: params.prompt,
+    negative_prompt: params.negativePrompt ?? 'bad quality, blurry, deformed',
+    width: params.width ?? 832,
+    height: params.height ?? 1216,
+    steps: params.steps ?? 35,
+    cfg: params.cfg ?? 2.0,
+    seed: params.seed ?? Math.floor(Math.random() * 1_000_000_000),
+    image_url: params.imageUrl,
+    output: { include_base64: true, save_to_volume: false },
+  };
+}
+
+/** Pulls the generated image out of a completed face-swap job. */
+export function extractFaceSwapImage(status: RunPodJobStatus): string | null {
+  const output = status.output as { image_base64?: string } | undefined;
+  return output?.image_base64 ?? null;
 }

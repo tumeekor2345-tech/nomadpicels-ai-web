@@ -17,6 +17,10 @@ export const Env = createEnv({
     RUNPOD_API_KEY: z.string().min(1).optional(),
     RUNPOD_FLUX_ENDPOINT_ID: z.string().min(1).optional(),
     RUNPOD_WAN_ENDPOINT_ID: z.string().min(1).optional(),
+    // Face-swap "Tools" feature — runs `runpod/comfyui-faceswap-sdxl` (see
+    // https://github.com/runpod-workers/comfyui-faceswap-sdxl). Optional
+    // until that endpoint is deployed on your RunPod account.
+    RUNPOD_FACESWAP_ENDPOINT_ID: z.string().min(1).optional(),
 
     // --- QPay (Mongolian payment gateway, Merchant V2 API) ---
     // Optional for now: not set until Phase 3 (Payment). Same behavior as
@@ -50,6 +54,7 @@ export const Env = createEnv({
     RUNPOD_API_KEY: process.env.RUNPOD_API_KEY,
     RUNPOD_FLUX_ENDPOINT_ID: process.env.RUNPOD_FLUX_ENDPOINT_ID,
     RUNPOD_WAN_ENDPOINT_ID: process.env.RUNPOD_WAN_ENDPOINT_ID,
+    RUNPOD_FACESWAP_ENDPOINT_ID: process.env.RUNPOD_FACESWAP_ENDPOINT_ID,
     QPAY_BASE_URL: process.env.QPAY_BASE_URL,
     QPAY_CLIENT_ID: process.env.QPAY_CLIENT_ID,
     QPAY_CLIENT_SECRET: process.env.QPAY_CLIENT_SECRET,
