@@ -16,11 +16,11 @@
     "button_label": "Хэл солих"
   },
   "Hero": {
-    "follow_twitter": "@NomadPixelsAI-г дагах",
+    "follow_twitter": "Монголд зориулсан AI контент студи",
     "title": "Секундын дотор гайхалтай <important>AI зураг, видео</important> үүсгэ.",
     "description": "NomadPixels AI таны санааг зураг (Flux) болон видео (Wan 2.2) болгон хувиргадаг, түрээсийн GPU дээр ажилладаг — QPay, SocialPay, Монголын банкны картаар төлбөрөө хийнэ.",
     "primary_button": "Үнэгүй эхлэх",
-    "secondary_button": "Жишээ үзэх"
+    "secondary_button": "Нэвтрэх"
   },
   "Features": {
     "section_subtitle": "Боломжууд",
@@ -86,7 +86,7 @@
     "company": "Компани",
     "terms_of_service": "Үйлчилгээний нөхцөл",
     "privacy_policy": "Нууцлалын бодлого",
-    "footer_text": "© {year} {name}. <author></author>-тай хамт бүтээв."
+    "footer_text": "© {year} {name}. Бүх эрх хуулиар хамгаалагдсан."
   },
   "SignIn": {
     "meta_title": "Нэвтрэх",

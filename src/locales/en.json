@@ -16,11 +16,11 @@
     "button_label": "Change language"
   },
   "Hero": {
-    "follow_twitter": "Follow @NomadPixelsAI",
+    "follow_twitter": "An AI content studio built for Mongolia",
     "title": "Create stunning <important>AI images & videos</important> in seconds.",
     "description": "NomadPixels AI turns your ideas into images (Flux) and videos (Wan 2.2), running on rented GPU power — with payment in QPay, SocialPay, and Mongolian bank cards.",
     "primary_button": "Start creating for free",
-    "secondary_button": "See examples"
+    "secondary_button": "Sign in"
   },
   "Features": {
     "section_subtitle": "Features",
@@ -86,7 +86,7 @@
     "company": "Company",
     "terms_of_service": "Terms Of Service",
     "privacy_policy": "Privacy Policy",
-    "footer_text": "© {year} {name}. Made with <author></author>."
+    "footer_text": "© {year} {name}. All rights reserved."
   },
   "SignIn": {
     "meta_title": "Sign in",
