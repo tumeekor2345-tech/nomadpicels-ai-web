@@ -40,36 +40,37 @@
 }
 
 /*
- * NomadPixels AI brand theme.
- * Primary  = indigo/violet  → the "AI" half of the brand.
- * Accent   = warm gold      → the "Nomad" half (steppe / eternal-sky palette).
- * These are starting points — swap once a logo/brand guide exists.
+ * NomadPixels AI brand theme — "Шөнийн тал нутаг" (Night steppe).
+ * Background = deep indigo-navy night sky over the steppe.
+ * Primary    = periwinkle-purple → the "AI" half of the brand.
+ * Accent     = warm gold         → the "Nomad" half (steppe / eternal-sky palette).
+ * No light/dark toggle exists in this app, so this is the site's one theme.
  */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.55 0.19 275);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.83 0.15 80);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.55 0.19 275);
-  --chart-1: oklch(0.55 0.19 275);
-  --chart-2: oklch(0.83 0.15 80);
-  --chart-3: oklch(0.6 0.118 184.704);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --background: #15132a;
+  --foreground: #f4f3fa;
+  --card: #1e1b3b;
+  --card-foreground: #f4f3fa;
+  --popover: #1e1b3b;
+  --popover-foreground: #f4f3fa;
+  --primary: #8b7cf0;
+  --primary-foreground: #15132a;
+  --secondary: #241f45;
+  --secondary-foreground: #f4f3fa;
+  --muted: #241f45;
+  --muted-foreground: #9993c4;
+  --accent: #e0a438;
+  --accent-foreground: #412402;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: #322d57;
+  --input: #322d57;
+  --ring: #8b7cf0;
+  --chart-1: #8b7cf0;
+  --chart-2: #e0a438;
+  --chart-3: #2fb8c6;
+  --chart-4: #e8735a;
+  --chart-5: #b84fc4;
 }
 
 .dark {
