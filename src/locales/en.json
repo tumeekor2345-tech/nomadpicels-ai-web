@@ -101,6 +101,7 @@
     "meta_description": "Generate, manage, and download your AI images and videos.",
     "home": "Home",
     "create": "Create",
+    "billing": "Billing",
     "members": "Members",
     "settings": "Settings"
   },
@@ -131,6 +132,18 @@
     "download_label": "Download",
     "history_title": "Your generations",
     "history_empty": "Nothing generated yet — try creating your first image or video above."
+  },
+  "BillingPage": {
+    "title_bar": "Billing",
+    "title_bar_description": "Buy a credit package and use it for image and video generations",
+    "balance_label": "Current credit balance",
+    "buy": "Buy",
+    "buying": "Please wait...",
+    "scan_instruction": "Scan this QR with your QPay app to pay",
+    "waiting": "Waiting for payment...",
+    "paid": "Payment confirmed! Credits added.",
+    "failed": "Something went wrong. Please try again.",
+    "credit_cost_note": "1 image = 1 credit, 1 video (5s) = 8 credits"
   },
   "UserProfilePage": {
     "title_bar": "User Profile",

@@ -15,6 +15,13 @@
       "when": 1783162192579,
       "tag": "0001_nostalgic_psylocke",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783405234621,
+      "tag": "0002_talented_rhodey",
+      "breakpoints": true
     }
   ]
 }

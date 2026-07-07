@@ -6,12 +6,13 @@ import { and, eq, gte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { isPromptBlocked } from '@/libs/ContentModeration';
 import { db } from '@/libs/DB';
+import { CREDIT_COST } from '@/libs/Pricing';
 import {
   buildFluxInput,
   buildWanInput,
   submitRunPodJob,
 } from '@/libs/RunPod';
-import { generationSchema } from '@/models/Schema';
+import { creditBalanceSchema, generationSchema } from '@/models/Schema';
 
 /**
  * Starts a generation job (Flux image or Wan 2.2 video) and returns the
@@ -53,6 +54,31 @@ async function countGenerationsToday(ownerId: string): Promise<number> {
   return Number(rows[0]?.count ?? 0);
 }
 
+/**
+ * Atomically tries to spend `cost` credits for `ownerId`. The
+ * `balance >= cost` guard lives in the SQL WHERE clause (not a separate
+ * select-then-update), so two concurrent requests can't both succeed against
+ * the same last few credits — Postgres serializes the row update. Returns
+ * true if the deduction succeeded.
+ */
+async function trySpendCredits(ownerId: string, cost: number): Promise<boolean> {
+  const updated = await db
+    .update(creditBalanceSchema)
+    .set({ balance: sql`${creditBalanceSchema.balance} - ${cost}` })
+    .where(and(eq(creditBalanceSchema.ownerId, ownerId), gte(creditBalanceSchema.balance, cost)))
+    .returning({ balance: creditBalanceSchema.balance });
+
+  return updated.length > 0;
+}
+
+/** Refunds credits after a paid generation failed to submit to RunPod. */
+async function refundCredits(ownerId: string, cost: number): Promise<void> {
+  await db
+    .update(creditBalanceSchema)
+    .set({ balance: sql`${creditBalanceSchema.balance} + ${cost}` })
+    .where(eq(creditBalanceSchema.ownerId, ownerId));
+}
+
 export async function POST(request: Request) {
   const { userId, orgId } = await auth();
 
@@ -80,35 +106,49 @@ export async function POST(request: Request) {
     );
   }
 
-  const usedToday = await countGenerationsToday(userId);
-  if (usedToday >= DAILY_GENERATION_LIMIT) {
+  if (body.kind === 'wan' && (!body.imageUrl || typeof body.imageUrl !== 'string')) {
+    return NextResponse.json(
+      { error: 'imageUrl is required (Wan 2.2 is image-to-video).' },
+      { status: 400 },
+    );
+  }
+
+  const fluxWorkflow = body.kind === 'flux' ? loadFluxWorkflow() : null;
+  if (body.kind === 'flux' && !fluxWorkflow) {
     return NextResponse.json(
       {
-        error: 'daily_limit_reached',
-        message: `You've reached today's limit of ${DAILY_GENERATION_LIMIT} generations. Please try again tomorrow.`,
+        error: 'flux_workflow_not_configured',
+        message: 'Flux workflow.json is not set up yet. Export it from ComfyUI '
+          + '(Workflow > Export (API)) and save it as '
+          + 'src/libs/workflows/flux-schnell-txt2img.json — see that folder\'s '
+          + 'README.md for the exact steps.',
       },
-      { status: 429 },
+      { status: 501 },
     );
+  }
+
+  // Paying users: spend credits and skip the free daily cap entirely.
+  // Free users (no credits, or insufficient balance): fall back to the
+  // existing anti-abuse daily limit.
+  const creditCost = CREDIT_COST[body.kind as 'flux' | 'wan'];
+  const paidWithCredits = await trySpendCredits(userId, creditCost);
+
+  if (!paidWithCredits) {
+    const usedToday = await countGenerationsToday(userId);
+    if (usedToday >= DAILY_GENERATION_LIMIT) {
+      return NextResponse.json(
+        {
+          error: 'daily_limit_reached',
+          message: `You've reached today's limit of ${DAILY_GENERATION_LIMIT} generations, and you don't have enough credits. Buy a credit package on the Billing page to generate more.`,
+        },
+        { status: 429 },
+      );
+    }
   }
 
   try {
     if (body.kind === 'flux') {
-      const workflow = loadFluxWorkflow();
-
-      if (!workflow) {
-        return NextResponse.json(
-          {
-            error: 'flux_workflow_not_configured',
-            message: 'Flux workflow.json is not set up yet. Export it from ComfyUI '
-              + '(Workflow > Export (API)) and save it as '
-              + 'src/libs/workflows/flux-schnell-txt2img.json — see that folder\'s '
-              + 'README.md for the exact steps.',
-          },
-          { status: 501 },
-        );
-      }
-
-      const input = buildFluxInput(workflow, {
+      const input = buildFluxInput(fluxWorkflow!, {
         prompt: body.prompt,
         width: body.width,
         height: body.height,
@@ -130,13 +170,6 @@ export async function POST(request: Request) {
     }
 
     // kind === 'wan'
-    if (!body.imageUrl || typeof body.imageUrl !== 'string') {
-      return NextResponse.json(
-        { error: 'imageUrl is required (Wan 2.2 is image-to-video).' },
-        { status: 400 },
-      );
-    }
-
     const input = buildWanInput({
       prompt: body.prompt,
       imageUrl: body.imageUrl,
@@ -159,6 +192,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ kind: 'wan', jobId: job.id, status: job.status, generationId: row?.id });
   } catch (error) {
+    // The job never made it to RunPod — refund any credits we spent above,
+    // since the user got nothing for them. Free-tier requests (paidWithCredits
+    // === false) already only cost a daily-limit slot, not credits.
+    if (paidWithCredits) {
+      await refundCredits(userId, creditCost);
+    }
+
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 502 });
   }
