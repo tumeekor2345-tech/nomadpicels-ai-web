@@ -7,10 +7,7 @@
     "sign_in": "Sign in",
     "sign_up": "Sign up",
     "product": "Product",
-    "pricing": "Pricing",
-    "docs": "Docs",
-    "blog": "Blog",
-    "about": "About"
+    "pricing": "Pricing"
   },
   "LocaleSwitcher": {
     "button_label": "Change language"
@@ -27,12 +24,17 @@
     "section_title": "Everything you need to create AI content",
     "section_description": "From a text prompt to a finished image or video — fast, affordable, and built for Mongolian creators.",
     "feature1_title": "Image generation (Flux)",
+    "feature1_description": "Turn a text prompt into a finished image in seconds using the Flux model.",
     "feature2_title": "Video generation (Wan 2.2)",
+    "feature2_description": "Create short AI videos from a prompt or a source photo with Wan 2.2.",
     "feature3_title": "QPay / SocialPay / Bank card",
+    "feature3_description": "Pay however is easiest for you — QPay QR, SocialPay, or a Mongolian bank card.",
     "feature4_title": "Credit-based pricing",
+    "feature4_description": "No subscription — buy credits once and spend them only when you generate.",
     "feature5_title": "Mongolian interface",
+    "feature5_description": "The whole studio is in Mongolian, built for Mongolian creators from day one.",
     "feature6_title": "Fast GPU rendering",
-    "feature_description": "Generate, preview, and download your AI content directly from your dashboard."
+    "feature6_description": "Runs on rented GPU power, so most images and videos finish in well under a minute."
   },
   "Pricing": {
     "section_subtitle": "Pricing",
@@ -70,8 +72,18 @@
     "nextjs_boilerplate_logo": "Next.js SaaS Boilerplate logo"
   },
   "FAQ": {
-    "question": "What models does NomadPixels AI use?",
-    "answer": "Images are generated with Flux (schnell) and videos with Wan 2.2, both run on rented RunPod GPU infrastructure."
+    "question1": "What models does NomadPixels AI use?",
+    "answer1": "Images are generated with Flux (schnell) and videos with Wan 2.2, both run on rented RunPod GPU infrastructure.",
+    "question2": "How does credit-based pricing work?",
+    "answer2": "You buy a credit package once and spend credits as you generate — 1 image costs 1 credit, 1 video (5s) costs 8 credits. There's no monthly subscription.",
+    "question3": "How can I pay?",
+    "answer3": "You can pay with a QPay QR code, SocialPay, or a Mongolian bank card. The Стартер packages let you pay per single image or video with a one-off QR payment.",
+    "question4": "What are the Tools (Photo Restore, Face Swap, Voice Changer)?",
+    "answer4": "One-click tools that need no prompt: Photo Restore repairs and recolors old photos, Face Swap generates a new portrait using a face from your photo, and Voice Changer changes a recording's pitch (deep, high, female, child) — the voice changer isn't AI, just audio pitch-shifting.",
+    "question5": "How long does a generation take?",
+    "answer5": "Most images finish in well under a minute; videos take a bit longer since they render more frames. You can watch progress live from your dashboard.",
+    "question6": "Is NomadPixels AI built for Mongolia?",
+    "answer6": "Yes — the whole interface is in Mongolian, pricing is in MNT, and payment methods (QPay, SocialPay, bank cards) are the ones Mongolian users already use."
   },
   "CTA": {
     "title": "Ready to create?",
@@ -80,10 +92,6 @@
   },
   "Footer": {
     "product": "Product",
-    "docs": "Docs",
-    "blog": "Blog",
-    "community": "Community",
-    "company": "Company",
     "terms_of_service": "Terms Of Service",
     "privacy_policy": "Privacy Policy",
     "footer_text": "© {year} {name}. All rights reserved."

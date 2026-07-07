@@ -1,3 +1,11 @@
+import {
+  CreditCard,
+  Globe,
+  ImageIcon,
+  QrCode,
+  Video,
+  Zap,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Background } from '@/components/Background';
 import { FeatureCard } from '@/features/landing/FeatureCard';
@@ -9,6 +17,7 @@ export const Features = () => {
   return (
     <Background>
       <Section
+        id="features"
         subtitle={t('section_subtitle')}
         title={t('section_title')}
         description={t('section_description')}
@@ -19,117 +28,45 @@ export const Features = () => {
         "
         >
           <FeatureCard
-            icon={(
-              <svg
-                className="stroke-primary-foreground stroke-2"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M0 0h24v24H0z" stroke="none" />
-                <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3M12 12l8-4.5M12 12v9M12 12L4 7.5" />
-              </svg>
-            )}
+            icon={<ImageIcon className="stroke-primary-foreground stroke-2" />}
             title={t('feature1_title')}
           >
-            {t('feature_description')}
+            {t('feature1_description')}
           </FeatureCard>
 
           <FeatureCard
-            icon={(
-              <svg
-                className="stroke-primary-foreground stroke-2"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M0 0h24v24H0z" stroke="none" />
-                <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3M12 12l8-4.5M12 12v9M12 12L4 7.5" />
-              </svg>
-            )}
+            icon={<Video className="stroke-primary-foreground stroke-2" />}
             title={t('feature2_title')}
           >
-            {t('feature_description')}
+            {t('feature2_description')}
           </FeatureCard>
 
           <FeatureCard
-            icon={(
-              <svg
-                className="stroke-primary-foreground stroke-2"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M0 0h24v24H0z" stroke="none" />
-                <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3M12 12l8-4.5M12 12v9M12 12L4 7.5" />
-              </svg>
-            )}
+            icon={<QrCode className="stroke-primary-foreground stroke-2" />}
             title={t('feature3_title')}
           >
-            {t('feature_description')}
+            {t('feature3_description')}
           </FeatureCard>
 
           <FeatureCard
-            icon={(
-              <svg
-                className="stroke-primary-foreground stroke-2"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M0 0h24v24H0z" stroke="none" />
-                <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3M12 12l8-4.5M12 12v9M12 12L4 7.5" />
-              </svg>
-            )}
+            icon={<CreditCard className="stroke-primary-foreground stroke-2" />}
             title={t('feature4_title')}
           >
-            {t('feature_description')}
+            {t('feature4_description')}
           </FeatureCard>
 
           <FeatureCard
-            icon={(
-              <svg
-                className="stroke-primary-foreground stroke-2"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M0 0h24v24H0z" stroke="none" />
-                <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3M12 12l8-4.5M12 12v9M12 12L4 7.5" />
-              </svg>
-            )}
+            icon={<Globe className="stroke-primary-foreground stroke-2" />}
             title={t('feature5_title')}
           >
-            {t('feature_description')}
+            {t('feature5_description')}
           </FeatureCard>
 
           <FeatureCard
-            icon={(
-              <svg
-                className="stroke-primary-foreground stroke-2"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M0 0h24v24H0z" stroke="none" />
-                <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3M12 12l8-4.5M12 12v9M12 12L4 7.5" />
-              </svg>
-            )}
+            icon={<Zap className="stroke-primary-foreground stroke-2" />}
             title={t('feature6_title')}
           >
-            {t('feature_description')}
+            {t('feature6_description')}
           </FeatureCard>
         </div>
       </Section>

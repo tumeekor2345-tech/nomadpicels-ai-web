@@ -6,8 +6,9 @@ export const Section = (props: {
   subtitle?: string;
   description?: string;
   className?: string;
+  id?: string;
 }) => (
-  <div className={cn('@container px-3 py-16', props.className)}>
+  <div id={props.id} className={cn('@container px-3 py-16', props.className)}>
     {(props.title || props.subtitle || props.description) && (
       <div className="mx-auto mb-12 max-w-3xl text-center">
         {props.subtitle && (
