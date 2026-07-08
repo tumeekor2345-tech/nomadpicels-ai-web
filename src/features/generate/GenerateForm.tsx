@@ -123,7 +123,13 @@ export const GenerateForm = (props: {
   const [imageUrl, setImageUrl] = useState('');
   const [duration, setDuration] = useState<5 | 8 | 10 | 15>(5);
   const [wanAspectRatio, setWanAspectRatio] = useState<WanAspectRatioId>('16:9');
-  const [style, setStyle] = useState<StyleId>('none');
+  // Default to "photorealistic" rather than "none": Flux schnell (the
+  // model this app runs on) produces noticeably flatter, more
+  // illustration-like results with a bare prompt — see
+  // src/libs/ImagePresets.ts's honesty note. Defaulting to photorealistic
+  // gives users a meaningfully better result out of the box; they can still
+  // switch to "Байхгүй" or any other style manually.
+  const [style, setStyle] = useState<StyleId>('photorealistic');
   const [lens, setLens] = useState<LensId>('none');
   const [aspectRatio, setAspectRatio] = useState<AspectRatioId>('1:1');
   const [referenceImage, setReferenceImage] = useState<{ dataUrl: string; base64: string } | null>(null);

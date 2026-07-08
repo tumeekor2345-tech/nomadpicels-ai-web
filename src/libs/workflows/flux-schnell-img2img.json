@@ -84,7 +84,7 @@
   "17": {
     "inputs": {
       "scheduler": "sgm_uniform",
-      "steps": 4,
+      "steps": 8,
       "denoise": 0.55,
       "model": ["12", 0]
     },
