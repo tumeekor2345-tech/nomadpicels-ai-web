@@ -94,6 +94,7 @@
     "product": "Product",
     "terms_of_service": "Terms Of Service",
     "privacy_policy": "Privacy Policy",
+    "contact": "Contact",
     "footer_text": "© {year} {name}. All rights reserved."
   },
   "SignIn": {

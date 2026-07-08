@@ -54,7 +54,7 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
       {
         heading: '5. Your rights',
         body: [
-          'You can ask us to access, correct, or delete your personal data by contacting us through the details on our About page. You can delete your account at any time from your account settings.',
+          'You can ask us to access, correct, or delete your personal data by contacting us through the details on our Contact page. You can delete your account at any time from your account settings.',
         ],
       },
       {
@@ -84,7 +84,7 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
       {
         heading: '10. Contact',
         body: [
-          'Questions about this Privacy Policy? Contact us through the details on our About page.',
+          'Questions about this Privacy Policy? Contact us through the details on our Contact page.',
         ],
       },
     ],
@@ -128,7 +128,7 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
       {
         heading: '5. Таны эрх',
         body: [
-          'Та манай About хуудсан дахь мэдээллээр холбогдож хувийн мэдээлэлдээ хандах, засварлах, устгахыг хүсэж болно. Та акаунтаа хүссэн үедээ акаунтын тохиргооноосоо устгаж болно.',
+          'Та манай Холбоо барих хуудсан дахь мэдээллээр холбогдож хувийн мэдээлэлдээ хандах, засварлах, устгахыг хүсэж болно. Та акаунтаа хүссэн үедээ акаунтын тохиргооноосоо устгаж болно.',
         ],
       },
       {
@@ -158,7 +158,7 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
       {
         heading: '10. Холбоо барих',
         body: [
-          'Энэ Нууцлалын бодлоготой холбоотой асуулт байвал манай About хуудсан дахь мэдээллээр холбогдоно уу.',
+          'Энэ Нууцлалын бодлоготой холбоотой асуулт байвал манай Холбоо барих хуудсан дахь мэдээллээр холбогдоно уу.',
         ],
       },
     ],

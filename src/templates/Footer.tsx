@@ -22,6 +22,9 @@ export const Footer = () => {
             <li>
               <Link href="/privacy">{t('privacy_policy')}</Link>
             </li>
+            <li>
+              <Link href="/contact">{t('contact')}</Link>
+            </li>
           </>
         )}
       >

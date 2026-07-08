@@ -98,7 +98,7 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
       {
         heading: '13. Contact',
         body: [
-          'Questions about these Terms? Contact us through the details on our About page.',
+          'Questions about these Terms? Contact us through the details on our Contact page.',
         ],
       },
     ],
@@ -186,7 +186,7 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
       {
         heading: '13. Холбоо барих',
         body: [
-          'Энэ нөхцөлтэй холбоотой асуулт байвал манай About хуудсан дахь мэдээллээр холбогдоно уу.',
+          'Энэ нөхцөлтэй холбоотой асуулт байвал манай Холбоо барих хуудсан дахь мэдээллээр холбогдоно уу.',
         ],
       },
     ],
