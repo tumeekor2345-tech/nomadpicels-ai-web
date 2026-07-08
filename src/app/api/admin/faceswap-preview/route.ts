@@ -55,8 +55,18 @@ export async function GET(request: Request) {
     }
 
     const buffer = Buffer.from(base64, 'base64');
+    // `?download=1` forces a real Content-Disposition: attachment response —
+    // navigating straight to that URL triggers a normal browser download
+    // (same as clicking a download link), unlike a script-triggered
+    // `<a>.click()` which Chrome's popup/download blocker cuts off after the
+    // first couple of automatic downloads on a page.
+    const forceDownload = new URL(request.url).searchParams.get('download') === '1';
     return new NextResponse(new Uint8Array(buffer), {
-      headers: { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' },
+      headers: {
+        'Content-Type': 'image/png',
+        'Cache-Control': 'no-store',
+        ...(forceDownload ? { 'Content-Disposition': `attachment; filename="${style}.png"` } : {}),
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
