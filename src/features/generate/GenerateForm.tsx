@@ -24,6 +24,15 @@ import { cn } from '@/utils/Helpers';
 
 type Kind = 'flux' | 'wan';
 
+// The Wan 2.2 Hub endpoint only accepts these two fixed sizes (confirmed in
+// src/libs/RunPod.ts's buildWanInput `size` type) — no other aspect ratios
+// are actually supported by this endpoint, unlike Flux's 5 ratio options.
+type WanAspectRatioId = '16:9' | '9:16';
+const WAN_SIZES: Array<{ id: WanAspectRatioId; size: '1280*720' | '720*1280' }> = [
+  { id: '16:9', size: '1280*720' },
+  { id: '9:16', size: '720*1280' },
+];
+
 type JobStatus = {
   id: string;
   status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'TIMED_OUT';
@@ -103,6 +112,7 @@ export const GenerateForm = (props: {
   const [prompt, setPrompt] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [duration, setDuration] = useState<5 | 8 | 10 | 15>(5);
+  const [wanAspectRatio, setWanAspectRatio] = useState<WanAspectRatioId>('16:9');
   const [style, setStyle] = useState<StyleId>('none');
   const [lens, setLens] = useState<LensId>('none');
   const [aspectRatio, setAspectRatio] = useState<AspectRatioId>('1:1');
@@ -208,7 +218,13 @@ export const GenerateForm = (props: {
               }
             : {}),
         }
-      : { kind, prompt, imageUrl, durationSeconds: duration };
+      : {
+          kind,
+          prompt,
+          imageUrl,
+          durationSeconds: duration,
+          size: WAN_SIZES.find(r => r.id === wanAspectRatio)?.size,
+        };
 
     const res = await fetch('/api/generate', {
       method: 'POST',
@@ -590,6 +606,30 @@ export const GenerateForm = (props: {
                   onChange={e => setImageUrl(e.target.value)}
                   placeholder={props.labels.imageUrlPlaceholder}
                 />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>{props.labels.aspectRatioLabel}</Label>
+                <div className="flex gap-2">
+                  {WAN_SIZES.map(ratio => (
+                    <button
+                      key={ratio.id}
+                      type="button"
+                      onClick={() => setWanAspectRatio(ratio.id)}
+                      className={cn(
+                        `
+                          flex-1 rounded-md border px-2 py-1.5 text-sm
+                          font-medium
+                        `,
+                        wanAspectRatio === ratio.id
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-input bg-transparent text-muted-foreground',
+                      )}
+                    >
+                      {ratio.id}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
