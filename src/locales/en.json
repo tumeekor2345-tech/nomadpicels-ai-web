@@ -199,7 +199,15 @@
     "reference_influence_label": "Influence",
     "reference_influence_low": "Low",
     "reference_influence_medium": "Medium",
-    "reference_influence_high": "High"
+    "reference_influence_high": "High",
+    "enhance_button": "Improve my idea",
+    "enhancing": "Improving...",
+    "enhance_preview_title": "AI-suggested detailed prompt",
+    "enhance_use": "Use it",
+    "enhance_cancel": "Cancel",
+    "enhance_not_configured": "This feature isn't set up yet.",
+    "enhance_failed": "Couldn't improve it — try again.",
+    "enhance_blocked": "This idea violates our content policy."
   },
   "ToolsPage": {
     "title_bar": "Tools",

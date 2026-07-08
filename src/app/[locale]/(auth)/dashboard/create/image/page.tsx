@@ -74,6 +74,14 @@ export default async function CreateImagePage(props: {
           referenceInfluenceLow: t('reference_influence_low'),
           referenceInfluenceMedium: t('reference_influence_medium'),
           referenceInfluenceHigh: t('reference_influence_high'),
+          enhanceButton: t('enhance_button'),
+          enhancing: t('enhancing'),
+          enhancePreviewTitle: t('enhance_preview_title'),
+          enhanceUse: t('enhance_use'),
+          enhanceCancel: t('enhance_cancel'),
+          enhanceNotConfigured: t('enhance_not_configured'),
+          enhanceFailed: t('enhance_failed'),
+          enhanceBlocked: t('enhance_blocked'),
         }}
       />
     </>

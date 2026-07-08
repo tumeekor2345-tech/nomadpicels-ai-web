@@ -96,6 +96,14 @@ export const GenerateForm = (props: {
     referenceInfluenceLow: string;
     referenceInfluenceMedium: string;
     referenceInfluenceHigh: string;
+    enhanceButton: string;
+    enhancing: string;
+    enhancePreviewTitle: string;
+    enhanceUse: string;
+    enhanceCancel: string;
+    enhanceNotConfigured: string;
+    enhanceFailed: string;
+    enhanceBlocked: string;
   };
   /**
    * When set, this form is locked to a single mode (dedicated Image or Video
@@ -119,6 +127,9 @@ export const GenerateForm = (props: {
   const [referenceImage, setReferenceImage] = useState<{ dataUrl: string; base64: string } | null>(null);
   const [referenceInfluence, setReferenceInfluence] = useState<ReferenceInfluence>('medium');
   const referenceInputRef = useRef<HTMLInputElement | null>(null);
+  const [enhancing, setEnhancing] = useState(false);
+  const [enhancedPreview, setEnhancedPreview] = useState<string | null>(null);
+  const [enhanceError, setEnhanceError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -263,6 +274,42 @@ export const GenerateForm = (props: {
     reader.readAsDataURL(file);
     // Allow re-selecting the same file later after removing it.
     e.target.value = '';
+  };
+
+  const handleEnhance = async () => {
+    if (!prompt.trim() || enhancing) {
+      return;
+    }
+
+    setEnhancing(true);
+    setEnhanceError(null);
+    setEnhancedPreview(null);
+
+    try {
+      const res = await fetch('/api/generate/enhance-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, kind }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.error === 'not_configured') {
+          setEnhanceError(props.labels.enhanceNotConfigured);
+        } else if (data.error === 'prompt_blocked') {
+          setEnhanceError(props.labels.enhanceBlocked);
+        } else {
+          setEnhanceError(props.labels.enhanceFailed);
+        }
+        return;
+      }
+
+      setEnhancedPreview(data.enhancedPrompt);
+    } catch {
+      setEnhanceError(props.labels.enhanceFailed);
+    } finally {
+      setEnhancing(false);
+    }
   };
 
   const hasResult = images.length > 0 || !!videoUrl || !!rawOutput;
@@ -444,6 +491,51 @@ export const GenerateForm = (props: {
               placeholder={props.labels.promptPlaceholder}
               rows={5}
             />
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!prompt.trim() || enhancing}
+              onClick={handleEnhance}
+              className="self-start"
+            >
+              {enhancing ? props.labels.enhancing : props.labels.enhanceButton}
+            </Button>
+
+            {enhanceError && (
+              <div className="text-xs font-medium text-destructive">{enhanceError}</div>
+            )}
+
+            {enhancedPreview && (
+              <div className="
+                flex flex-col gap-2 rounded-md border border-input bg-muted p-3
+              "
+              >
+                <div className="text-xs font-semibold">{props.labels.enhancePreviewTitle}</div>
+                <div className="text-sm text-muted-foreground">{enhancedPreview}</div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      setPrompt(enhancedPreview);
+                      setEnhancedPreview(null);
+                    }}
+                  >
+                    {props.labels.enhanceUse}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEnhancedPreview(null)}
+                  >
+                    {props.labels.enhanceCancel}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {kind === 'flux' && (

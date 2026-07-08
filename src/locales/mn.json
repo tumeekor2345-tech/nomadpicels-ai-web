@@ -199,7 +199,15 @@
     "reference_influence_label": "Нөлөөллийн түвшин",
     "reference_influence_low": "Бага",
     "reference_influence_medium": "Дунд",
-    "reference_influence_high": "Их"
+    "reference_influence_high": "Их",
+    "enhance_button": "Санаагаа сайжруул",
+    "enhancing": "Сайжруулж байна...",
+    "enhance_preview_title": "AI-н санал болгож буй дэлгэрэнгүй тайлбар",
+    "enhance_use": "Ашиглах",
+    "enhance_cancel": "Болих",
+    "enhance_not_configured": "Энэ функц одоогоор тохируулагдаагүй байна.",
+    "enhance_failed": "Сайжруулж чадсангүй — дахин оролдоно уу.",
+    "enhance_blocked": "Энэ санаа манай агуулгын бодлогод харшилж байна."
   },
   "ToolsPage": {
     "title_bar": "Tools",
