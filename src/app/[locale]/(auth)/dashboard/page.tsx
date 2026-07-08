@@ -32,7 +32,7 @@ export default async function DashboardIndexPage(props: {
       "
       >
         <Link
-          href="/dashboard/create?tab=image"
+          href="/dashboard/create/image"
           className="
             group relative overflow-hidden rounded-lg border border-border p-6
             transition-colors
@@ -60,7 +60,7 @@ export default async function DashboardIndexPage(props: {
         </Link>
 
         <Link
-          href="/dashboard/create?tab=video"
+          href="/dashboard/create/video"
           className="
             group relative overflow-hidden rounded-lg border border-border p-6
             transition-colors

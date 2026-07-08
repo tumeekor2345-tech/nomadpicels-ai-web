@@ -40,8 +40,8 @@ export default async function DashboardLayout(props: DashboardLayoutProps) {
     {
       label: t('section_create'),
       items: [
-        { href: '/dashboard/create?tab=image', label: t('create_image'), icon: 'image' as const },
-        { href: '/dashboard/create?tab=video', label: t('create_video'), icon: 'video' as const },
+        { href: '/dashboard/create/image', label: t('create_image'), icon: 'image' as const },
+        { href: '/dashboard/create/video', label: t('create_video'), icon: 'video' as const },
       ],
     },
     {

@@ -148,6 +148,10 @@
   "CreatePage": {
     "title_bar": "Create",
     "title_bar_description": "Generate an AI image (Flux) or video (Wan 2.2)",
+    "title_bar_image": "AI Image",
+    "title_bar_description_image": "Generate an AI image with Flux",
+    "title_bar_video": "AI Video",
+    "title_bar_description_video": "Generate an AI video with Wan 2.2",
     "image_tab": "Image (Flux)",
     "video_tab": "Video (Wan 2.2)",
     "prompt_label": "Prompt",

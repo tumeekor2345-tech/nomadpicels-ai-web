@@ -148,6 +148,10 @@
   "CreatePage": {
     "title_bar": "Үүсгэх",
     "title_bar_description": "AI зураг (Flux) эсвэл видео (Wan 2.2) үүсгэнэ үү",
+    "title_bar_image": "AI Зураг",
+    "title_bar_description_image": "Flux ашиглан AI зураг үүсгэнэ үү",
+    "title_bar_video": "AI Видео",
+    "title_bar_description_video": "Wan 2.2 ашиглан AI видео үүсгэнэ үү",
     "image_tab": "Зураг (Flux)",
     "video_tab": "Видео (Wan 2.2)",
     "prompt_label": "Тайлбар (prompt)",

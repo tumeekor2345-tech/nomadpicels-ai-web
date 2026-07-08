@@ -88,9 +88,16 @@ export const GenerateForm = (props: {
     referenceInfluenceMedium: string;
     referenceInfluenceHigh: string;
   };
+  /**
+   * When set, this form is locked to a single mode (dedicated Image or Video
+   * page) — the Зураг/Видео toggle isn't rendered at all and `kind` never
+   * changes. When omitted, falls back to the old ?tab= query param behavior
+   * for any bookmarked links.
+   */
+  fixedKind?: Kind;
 }) => {
   const searchParams = useSearchParams();
-  const initialKind: Kind = searchParams.get('tab') === 'video' ? 'wan' : 'flux';
+  const initialKind: Kind = props.fixedKind ?? (searchParams.get('tab') === 'video' ? 'wan' : 'flux');
 
   const [kind, setKind] = useState<Kind>(initialKind);
   const [prompt, setPrompt] = useState('');
@@ -373,40 +380,42 @@ export const GenerateForm = (props: {
         lg:sticky lg:top-20
       "
       >
-        <div className="mb-4 flex gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setKind('flux');
-              setErrorText(null);
-              setStatusText(null);
-            }}
-            className={cn(
-              'flex-1 rounded-md px-3 py-2 text-sm font-medium',
-              kind === 'flux'
-                ? 'bg-primary text-primary-foreground'
-                : `bg-muted text-muted-foreground`,
-            )}
-          >
-            {props.labels.imageTab}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setKind('wan');
-              setErrorText(null);
-              setStatusText(null);
-            }}
-            className={cn(
-              'flex-1 rounded-md px-3 py-2 text-sm font-medium',
-              kind === 'wan'
-                ? 'bg-primary text-primary-foreground'
-                : `bg-muted text-muted-foreground`,
-            )}
-          >
-            {props.labels.videoTab}
-          </button>
-        </div>
+        {!props.fixedKind && (
+          <div className="mb-4 flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setKind('flux');
+                setErrorText(null);
+                setStatusText(null);
+              }}
+              className={cn(
+                'flex-1 rounded-md px-3 py-2 text-sm font-medium',
+                kind === 'flux'
+                  ? 'bg-primary text-primary-foreground'
+                  : `bg-muted text-muted-foreground`,
+              )}
+            >
+              {props.labels.imageTab}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setKind('wan');
+                setErrorText(null);
+                setStatusText(null);
+              }}
+              className={cn(
+                'flex-1 rounded-md px-3 py-2 text-sm font-medium',
+                kind === 'wan'
+                  ? 'bg-primary text-primary-foreground'
+                  : `bg-muted text-muted-foreground`,
+              )}
+            >
+              {props.labels.videoTab}
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">

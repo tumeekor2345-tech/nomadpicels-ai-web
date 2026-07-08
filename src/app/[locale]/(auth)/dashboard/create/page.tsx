@@ -1,80 +1,20 @@
-import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { TitleBar } from '@/features/dashboard/TitleBar';
-import { GenerateForm } from '@/features/generate/GenerateForm';
+import { redirect } from 'next/navigation';
+import { getI18nPath } from '@/utils/Helpers';
 
+/**
+ * The Create page used to be a single screen with an in-panel Зураг/Видео
+ * toggle (?tab=image / ?tab=video). It's now split into two dedicated pages
+ * (create/image, create/video) so each menu item opens straight into its own
+ * mode with no toggle. This route only exists to redirect any old bookmarks
+ * or links still pointing at /dashboard/create(?tab=...).
+ */
 export default async function CreatePage(props: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { locale } = await props.params;
-  setRequestLocale(locale);
-  const t = await getTranslations({
-    locale,
-    namespace: 'CreatePage',
-  });
+  const { tab } = await props.searchParams;
 
-  return (
-    <>
-      <TitleBar
-        title={t('title_bar')}
-        description={t('title_bar_description')}
-      />
-
-      <GenerateForm
-        labels={{
-          imageTab: t('image_tab'),
-          videoTab: t('video_tab'),
-          promptLabel: t('prompt_label'),
-          promptPlaceholder: t('prompt_placeholder'),
-          imageUrlLabel: t('image_url_label'),
-          imageUrlPlaceholder: t('image_url_placeholder'),
-          durationLabel: t('duration_label'),
-          submit: t('submit'),
-          submitting: t('submitting'),
-          queued: t('queued'),
-          inProgress: t('in_progress'),
-          failed: t('failed'),
-          fluxNotConfigured: t('flux_not_configured'),
-          downloadLabel: t('download_label'),
-          historyTitle: t('history_title'),
-          historyEmpty: t('history_empty'),
-          resultTitle: t('result_title'),
-          resultEmpty: t('result_empty'),
-          costNoteImage: t('cost_note_image'),
-          costNoteVideo: t('cost_note_video'),
-          styleLabel: t('style_label'),
-          styleNames: {
-            'none': t('style_none'),
-            'photorealistic': t('style_photorealistic'),
-            'cinematic': t('style_cinematic'),
-            'anime': t('style_anime'),
-            'illustration': t('style_illustration'),
-            '3d': t('style_3d'),
-            'watercolor': t('style_watercolor'),
-            'cyberpunk': t('style_cyberpunk'),
-            'fantasy': t('style_fantasy'),
-          },
-          aspectRatioLabel: t('aspect_ratio_label'),
-          lensLabel: t('lens_label'),
-          lensHint: t('lens_hint'),
-          lensNames: {
-            none: t('lens_none'),
-            portrait: t('lens_portrait'),
-            wide: t('lens_wide'),
-            macro: t('lens_macro'),
-            telephoto: t('lens_telephoto'),
-            fisheye: t('lens_fisheye'),
-            anamorphic: t('lens_anamorphic'),
-          },
-          referenceLabel: t('reference_label'),
-          referenceHint: t('reference_hint'),
-          referenceUpload: t('reference_upload'),
-          referenceRemove: t('reference_remove'),
-          referenceInfluenceLabel: t('reference_influence_label'),
-          referenceInfluenceLow: t('reference_influence_low'),
-          referenceInfluenceMedium: t('reference_influence_medium'),
-          referenceInfluenceHigh: t('reference_influence_high'),
-        }}
-      />
-    </>
-  );
-};
+  const target = tab === 'video' ? '/dashboard/create/video' : '/dashboard/create/image';
+  redirect(getI18nPath(target, locale));
+}
