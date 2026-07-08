@@ -39,7 +39,14 @@ export const Hero = () => {
             </Link>
 
             <Link
-              className={buttonVariants({ size: 'lg' })}
+              className={buttonVariants({
+                size: 'lg',
+                className: `
+                  border-0 bg-linear-to-r from-indigo-500 via-purple-500
+                  to-pink-500 text-white
+                  hover:opacity-90
+                `,
+              })}
               href="/sign-up"
             >
               {t('primary_button')}

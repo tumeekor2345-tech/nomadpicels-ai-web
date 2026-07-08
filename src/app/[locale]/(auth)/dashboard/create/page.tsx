@@ -37,6 +37,10 @@ export default async function CreatePage(props: {
           downloadLabel: t('download_label'),
           historyTitle: t('history_title'),
           historyEmpty: t('history_empty'),
+          resultTitle: t('result_title'),
+          resultEmpty: t('result_empty'),
+          costNoteImage: t('cost_note_image'),
+          costNoteVideo: t('cost_note_video'),
         }}
       />
     </>

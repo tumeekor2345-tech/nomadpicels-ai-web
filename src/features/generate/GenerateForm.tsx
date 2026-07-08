@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,9 +55,16 @@ export const GenerateForm = (props: {
     downloadLabel: string;
     historyTitle: string;
     historyEmpty: string;
+    resultTitle: string;
+    resultEmpty: string;
+    costNoteImage: string;
+    costNoteVideo: string;
   };
 }) => {
-  const [kind, setKind] = useState<Kind>('flux');
+  const searchParams = useSearchParams();
+  const initialKind: Kind = searchParams.get('tab') === 'video' ? 'wan' : 'flux';
+
+  const [kind, setKind] = useState<Kind>(initialKind);
   const [prompt, setPrompt] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [duration, setDuration] = useState<5 | 8 | 10 | 15>(5);
@@ -171,198 +179,231 @@ export const GenerateForm = (props: {
     pollStatus(kind, data.jobId, Date.now());
   };
 
+  const hasResult = images.length > 0 || !!videoUrl || !!rawOutput;
+
   return (
-    <div className="rounded-md bg-card p-5">
-      <div className="mb-5 flex gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            setKind('flux');
-            setErrorText(null);
-            setStatusText(null);
-          }}
-          className={cn(
-            'rounded-md px-4 py-2 text-sm font-medium',
-            kind === 'flux'
-              ? 'bg-primary text-primary-foreground'
-              : `bg-muted text-muted-foreground`,
+    <div className="
+      grid grid-cols-1 items-start gap-6
+      lg:grid-cols-[1fr_360px]
+    "
+    >
+      {/* Main column: result + history */}
+      <div className="flex flex-col gap-6">
+        <div className="rounded-lg bg-card p-5">
+          <div className="mb-3 text-sm font-semibold">{props.labels.resultTitle}</div>
+
+          {statusText && (
+            <div className="text-sm text-muted-foreground">{statusText}</div>
           )}
-        >
-          {props.labels.imageTab}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setKind('wan');
-            setErrorText(null);
-            setStatusText(null);
-          }}
-          className={cn(
-            'rounded-md px-4 py-2 text-sm font-medium',
-            kind === 'wan'
-              ? 'bg-primary text-primary-foreground'
-              : `bg-muted text-muted-foreground`,
+
+          {errorText && (
+            <div className="text-sm font-medium text-destructive">{errorText}</div>
           )}
-        >
-          {props.labels.videoTab}
-        </button>
+
+          {!hasResult && !statusText && !errorText && (
+            <div className="text-sm text-muted-foreground">{props.labels.resultEmpty}</div>
+          )}
+
+          {images.length > 0 && (
+            <div className="
+              mt-2 grid grid-cols-1 gap-4
+              sm:grid-cols-2
+            "
+            >
+              {images.map((image) => {
+                const src = image.type === 'base64'
+                  ? `data:image/png;base64,${image.data}`
+                  : image.data;
+                return (
+                  <div key={image.filename} className="flex flex-col gap-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={image.filename} className="rounded-md" />
+                    <a
+                      href={src}
+                      download={image.filename}
+                      className="text-sm text-primary underline"
+                    >
+                      {props.labels.downloadLabel}
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {videoUrl && (
+            <div className="mt-2 flex flex-col gap-2">
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <video src={videoUrl} controls className="max-w-full rounded-md" />
+              <a
+                href={videoUrl}
+                download
+                className="text-sm text-primary underline"
+              >
+                {props.labels.downloadLabel}
+              </a>
+            </div>
+          )}
+
+          {rawOutput && (
+            <pre className="
+              mt-2 overflow-x-auto rounded-md bg-muted p-4 text-xs
+            "
+            >
+              {JSON.stringify(rawOutput, null, 2)}
+            </pre>
+          )}
+        </div>
+
+        <div className="rounded-lg bg-card p-5">
+          <div className="mb-3 text-sm font-semibold">{props.labels.historyTitle}</div>
+
+          {history.length === 0
+            ? (
+                <div className="text-sm text-muted-foreground">{props.labels.historyEmpty}</div>
+              )
+            : (
+                <div className="
+                  grid grid-cols-2 gap-3
+                  sm:grid-cols-3
+                "
+                >
+                  {history.map(item => (
+                    <div
+                      key={item.id}
+                      className="flex flex-col gap-2 rounded-md bg-muted p-2"
+                    >
+                      {item.images?.[0] && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.images[0].type === 'base64'
+                            ? `data:image/png;base64,${item.images[0].data}`
+                            : item.images[0].data}
+                          alt={item.prompt}
+                          className="aspect-square rounded-md object-cover"
+                        />
+                      )}
+                      {item.videoUrl && (
+                        // eslint-disable-next-line jsx-a11y/media-has-caption
+                        <video
+                          src={item.videoUrl}
+                          controls
+                          className="rounded-md"
+                        />
+                      )}
+                      <div className="
+                        line-clamp-2 text-xs text-muted-foreground
+                      "
+                      >
+                        {item.prompt}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="prompt">{props.labels.promptLabel}</Label>
-          <Textarea
-            id="prompt"
-            required
-            value={prompt}
-            onChange={e => setPrompt(e.target.value)}
-            placeholder={props.labels.promptPlaceholder}
-            rows={4}
-          />
+      {/* Right column: generation settings panel */}
+      <div className="
+        rounded-lg bg-card p-5
+        lg:sticky lg:top-20
+      "
+      >
+        <div className="mb-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setKind('flux');
+              setErrorText(null);
+              setStatusText(null);
+            }}
+            className={cn(
+              'flex-1 rounded-md px-3 py-2 text-sm font-medium',
+              kind === 'flux'
+                ? 'bg-primary text-primary-foreground'
+                : `bg-muted text-muted-foreground`,
+            )}
+          >
+            {props.labels.imageTab}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setKind('wan');
+              setErrorText(null);
+              setStatusText(null);
+            }}
+            className={cn(
+              'flex-1 rounded-md px-3 py-2 text-sm font-medium',
+              kind === 'wan'
+                ? 'bg-primary text-primary-foreground'
+                : `bg-muted text-muted-foreground`,
+            )}
+          >
+            {props.labels.videoTab}
+          </button>
         </div>
 
-        {kind === 'wan' && (
-          <>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="imageUrl">{props.labels.imageUrlLabel}</Label>
-              <Input
-                id="imageUrl"
-                required
-                type="url"
-                value={imageUrl}
-                onChange={e => setImageUrl(e.target.value)}
-                placeholder={props.labels.imageUrlPlaceholder}
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="prompt">{props.labels.promptLabel}</Label>
+            <Textarea
+              id="prompt"
+              required
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              placeholder={props.labels.promptPlaceholder}
+              rows={5}
+            />
+          </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="duration">{props.labels.durationLabel}</Label>
-              <div className="flex gap-2">
-                {([5, 8, 10, 15] as const).map(seconds => (
-                  <button
-                    key={seconds}
-                    type="button"
-                    onClick={() => setDuration(seconds)}
-                    className={cn(
-                      'rounded-md border px-3 py-1.5 text-sm',
-                      duration === seconds
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-input bg-transparent',
-                    )}
-                  >
-                    {seconds}
-                    s
-                  </button>
-                ))}
+          {kind === 'wan' && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="imageUrl">{props.labels.imageUrlLabel}</Label>
+                <Input
+                  id="imageUrl"
+                  required
+                  type="url"
+                  value={imageUrl}
+                  onChange={e => setImageUrl(e.target.value)}
+                  placeholder={props.labels.imageUrlPlaceholder}
+                />
               </div>
-            </div>
-          </>
-        )}
 
-        <div>
-          <Button type="submit" disabled={submitting}>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="duration">{props.labels.durationLabel}</Label>
+                <div className="flex gap-2">
+                  {([5, 8, 10, 15] as const).map(seconds => (
+                    <button
+                      key={seconds}
+                      type="button"
+                      onClick={() => setDuration(seconds)}
+                      className={cn(
+                        'flex-1 rounded-md border px-2 py-1.5 text-sm',
+                        duration === seconds
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-input bg-transparent',
+                      )}
+                    >
+                      {seconds}
+                      s
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          <Button type="submit" disabled={submitting} className="w-full">
             {submitting ? props.labels.submitting : props.labels.submit}
           </Button>
-        </div>
-      </form>
 
-      {statusText && (
-        <div className="mt-4 text-sm text-muted-foreground">{statusText}</div>
-      )}
-
-      {errorText && (
-        <div className="mt-4 text-sm font-medium text-destructive">{errorText}</div>
-      )}
-
-      {images.length > 0 && (
-        <div className="
-          mt-6 grid grid-cols-1 gap-4
-          sm:grid-cols-2
-        "
-        >
-          {images.map((image) => {
-            const src = image.type === 'base64'
-              ? `data:image/png;base64,${image.data}`
-              : image.data;
-            return (
-              <div key={image.filename} className="flex flex-col gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt={image.filename} className="rounded-md" />
-                <a
-                  href={src}
-                  download={image.filename}
-                  className="text-sm text-primary underline"
-                >
-                  {props.labels.downloadLabel}
-                </a>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {videoUrl && (
-        <div className="mt-6 flex flex-col gap-2">
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-          <video src={videoUrl} controls className="max-w-full rounded-md" />
-          <a
-            href={videoUrl}
-            download
-            className="text-sm text-primary underline"
-          >
-            {props.labels.downloadLabel}
-          </a>
-        </div>
-      )}
-
-      {rawOutput && (
-        <pre className="mt-6 overflow-x-auto rounded-md bg-muted p-4 text-xs">
-          {JSON.stringify(rawOutput, null, 2)}
-        </pre>
-      )}
-
-      <div className="mt-10 border-t border-border pt-6">
-        <div className="mb-3 text-lg font-semibold">{props.labels.historyTitle}</div>
-
-        {history.length === 0
-          ? (
-              <div className="text-sm text-muted-foreground">{props.labels.historyEmpty}</div>
-            )
-          : (
-              <div className="
-                grid grid-cols-1 gap-4
-                sm:grid-cols-2
-                md:grid-cols-3
-              "
-              >
-                {history.map(item => (
-                  <div
-                    key={item.id}
-                    className="flex flex-col gap-2 rounded-md bg-muted p-3"
-                  >
-                    {item.images?.[0] && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={item.images[0].type === 'base64'
-                          ? `data:image/png;base64,${item.images[0].data}`
-                          : item.images[0].data}
-                        alt={item.prompt}
-                        className="rounded-md"
-                      />
-                    )}
-                    {item.videoUrl && (
-                      // eslint-disable-next-line jsx-a11y/media-has-caption
-                      <video src={item.videoUrl} controls className="rounded-md" />
-                    )}
-                    <div className="line-clamp-2 text-xs text-muted-foreground">{item.prompt}</div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="uppercase">{item.kind}</span>
-                      <span>{item.status}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="text-center text-xs text-muted-foreground">
+            {kind === 'flux' ? props.labels.costNoteImage : props.labels.costNoteVideo}
+          </div>
+        </form>
       </div>
     </div>
   );

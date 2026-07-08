@@ -113,15 +113,37 @@
     "tools": "Tools",
     "billing": "Төлбөр",
     "settings": "Байгууллага",
-    "admin": "Админ"
+    "admin": "Админ",
+    "section_create": "Үүсгэх",
+    "create_image": "AI Зураг",
+    "create_video": "AI Видео",
+    "section_tools": "Хэрэгслүүд",
+    "tools_restore": "Зураг сэргээх",
+    "tools_face_swap": "Царай солих",
+    "tools_voice": "Хоолойны өнгө хувиргах",
+    "section_account": "Данс",
+    "buy_credits": "Кредит худалдаж авах"
   },
   "DashboardIndexPage": {
     "title_bar": "Dashboard",
-    "title_bar_description": "NomadPixels AI-д тавтай морил",
+    "title_bar_description": "Секундын дотор гайхалтай AI зураг, видео үүсгээрэй.",
     "message_state_title": "Ажлаа эхлүүлье",
     "message_state_description_plain": "Шинэ зураг (Flux) эсвэл видео (Wan 2.2) үүсгэж эхлээрэй, эсвэл кредит багц худалдан аваарай.",
     "cta_create": "Үүсгэх",
-    "cta_billing": "Кредит худалдан авах"
+    "cta_billing": "Кредит худалдан авах",
+    "welcome": "Тавтай морил",
+    "welcome_named": "Тавтай морил, {name}!",
+    "image_card_title": "AI Зураг үүсгэгч",
+    "image_card_description": "Текст тайлбараас гайхалтай зураг үүсгэнэ",
+    "video_card_title": "AI Видео үүсгэгч",
+    "video_card_description": "Тайлбар болон зургаас гайхалтай видео үүсгэнэ",
+    "create_cta": "Үүсгэх",
+    "tools_title": "Хэрэгслүүд",
+    "tools_restore": "Зураг сэргээх",
+    "tools_face_swap": "Царай солих",
+    "tools_voice": "Хоолойны өнгө хувиргах",
+    "recent_title": "Сүүлийн бүтээлүүд",
+    "recent_empty": "Одоохондоо юу ч үүсгээгүй байна — дээрээс эхний зураг эсвэл видеогоо үүсгэж үзнэ үү."
   },
   "CreatePage": {
     "title_bar": "Үүсгэх",
@@ -141,7 +163,11 @@
     "flux_not_configured": "Зураг үүсгэх функц бүрэн тохируулагдаагүй байна — Flux workflow файл дутуу байна.",
     "download_label": "Татаж авах",
     "history_title": "Таны үүсгэсэн зураг/видео",
-    "history_empty": "Одоохондоо юу ч үүсгээгүй байна — дээрээс эхний зураг эсвэл видеогоо үүсгэж үзнэ үү."
+    "history_empty": "Одоохондоо юу ч үүсгээгүй байна — дээрээс эхний зураг эсвэл видеогоо үүсгэж үзнэ үү.",
+    "result_title": "Үр дүн",
+    "result_empty": "Таны үүсгэсэн үр дүн энд харагдана.",
+    "cost_note_image": "1 зураг = 1 кредит",
+    "cost_note_video": "1 видео (5 сек) = 8 кредит"
   },
   "ToolsPage": {
     "title_bar": "Tools",

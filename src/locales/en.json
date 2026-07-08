@@ -113,15 +113,37 @@
     "tools": "Tools",
     "billing": "Billing",
     "settings": "Organization",
-    "admin": "Admin"
+    "admin": "Admin",
+    "section_create": "Create",
+    "create_image": "AI Image",
+    "create_video": "AI Video",
+    "section_tools": "Tools",
+    "tools_restore": "Photo Restore",
+    "tools_face_swap": "Face Swap",
+    "tools_voice": "Voice Changer",
+    "section_account": "Account",
+    "buy_credits": "Buy credits"
   },
   "DashboardIndexPage": {
     "title_bar": "Dashboard",
-    "title_bar_description": "Welcome to NomadPixels AI",
+    "title_bar_description": "Create stunning AI images and videos in seconds.",
     "message_state_title": "Let's create something",
     "message_state_description_plain": "Start a new image (Flux) or video (Wan 2.2) generation, or buy a credit package.",
     "cta_create": "Create",
-    "cta_billing": "Buy credits"
+    "cta_billing": "Buy credits",
+    "welcome": "Welcome back",
+    "welcome_named": "Welcome back, {name}!",
+    "image_card_title": "AI Image Generator",
+    "image_card_description": "Generate stunning images from text prompts",
+    "video_card_title": "AI Video Generator",
+    "video_card_description": "Create amazing videos from a prompt and a photo",
+    "create_cta": "Create",
+    "tools_title": "Tools",
+    "tools_restore": "Photo Restore",
+    "tools_face_swap": "Face Swap",
+    "tools_voice": "Voice Changer",
+    "recent_title": "Recent creations",
+    "recent_empty": "Nothing generated yet — try creating your first image or video above."
   },
   "CreatePage": {
     "title_bar": "Create",
@@ -141,7 +163,11 @@
     "flux_not_configured": "Image generation isn't fully configured yet — the Flux workflow file is missing.",
     "download_label": "Download",
     "history_title": "Your generations",
-    "history_empty": "Nothing generated yet — try creating your first image or video above."
+    "history_empty": "Nothing generated yet — try creating your first image or video above.",
+    "result_title": "Result",
+    "result_empty": "Your generated result will appear here.",
+    "cost_note_image": "1 image = 1 credit",
+    "cost_note_video": "1 video (5s) = 8 credits"
   },
   "ToolsPage": {
     "title_bar": "Tools",
