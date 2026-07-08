@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { TitleBar } from '@/features/dashboard/TitleBar';
 import { ToolsClient } from '@/features/tools/ToolsClient';
+import { FACE_SWAP_STYLE_IDS } from '@/libs/FaceSwapStyles';
 
 export default async function ToolsPage(props: {
   params: Promise<{ locale: string }>;
@@ -43,6 +44,10 @@ export default async function ToolsPage(props: {
           voiceRobot: t('voice_robot'),
           voiceProcessing: t('voice_processing'),
           voicePlayOriginal: t('voice_play_original'),
+          faceSwapStyleLabel: t('face_swap_style_label'),
+          faceSwapStyleLabels: Object.fromEntries(
+            FACE_SWAP_STYLE_IDS.map(id => [id, t(`face_swap_style_${id}`)]),
+          ) as Record<typeof FACE_SWAP_STYLE_IDS[number], string>,
         }}
       />
     </>

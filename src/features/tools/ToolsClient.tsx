@@ -1,9 +1,11 @@
 'use client';
 
+import type { FaceSwapStyleId } from '@/libs/FaceSwapStyles';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DEFAULT_FACE_SWAP_STYLE, FACE_SWAP_STYLE_IDS } from '@/libs/FaceSwapStyles';
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 10 * 60 * 1000;
@@ -31,6 +33,8 @@ type ToolLabels = {
   voiceRobot: string;
   voiceProcessing: string;
   voicePlayOriginal: string;
+  faceSwapStyleLabel: string;
+  faceSwapStyleLabels: Record<FaceSwapStyleId, string>;
 };
 
 /** Shared image-generation tool card (Photo Restore / Face Swap) — both take
@@ -43,6 +47,7 @@ function ImageToolCard(props: {
 }) {
   const { labels } = props;
   const [imageUrl, setImageUrl] = useState('');
+  const [style, setStyle] = useState<FaceSwapStyleId>(DEFAULT_FACE_SWAP_STYLE);
   const [submitting, setSubmitting] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -101,7 +106,11 @@ function ImageToolCard(props: {
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: props.kind, imageUrl }),
+      body: JSON.stringify(
+        props.kind === 'face_swap'
+          ? { kind: props.kind, imageUrl, style }
+          : { kind: props.kind, imageUrl },
+      ),
     });
     const data = await res.json();
 
@@ -121,6 +130,25 @@ function ImageToolCard(props: {
         <div className="text-lg font-semibold">{props.title}</div>
         <div className="mt-1 text-sm text-muted-foreground">{props.description}</div>
       </div>
+
+      {props.kind === 'face_swap' && (
+        <div className="flex flex-col gap-1.5">
+          <Label>{labels.faceSwapStyleLabel}</Label>
+          <div className="flex flex-wrap gap-2">
+            {FACE_SWAP_STYLE_IDS.map(id => (
+              <Button
+                key={id}
+                type="button"
+                size="sm"
+                variant={style === id ? 'default' : 'outline'}
+                onClick={() => setStyle(id)}
+              >
+                {labels.faceSwapStyleLabels[id]}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${props.kind}-url`}>URL</Label>

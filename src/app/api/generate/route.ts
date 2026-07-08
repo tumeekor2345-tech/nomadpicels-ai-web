@@ -6,6 +6,7 @@ import { and, eq, gte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { isPromptBlocked } from '@/libs/ContentModeration';
 import { db } from '@/libs/DB';
+import { DEFAULT_FACE_SWAP_STYLE, FACE_SWAP_STYLE_PROMPTS, isFaceSwapStyleId } from '@/libs/FaceSwapStyles';
 import { CREDIT_COST } from '@/libs/Pricing';
 import {
   buildFaceSwapInput,
@@ -36,10 +37,12 @@ const FLUX_IMG2IMG_WORKFLOW_PATH = path.join(
 // Preset prompts for the one-click "Tools" — the whole point is the user
 // never has to type a prompt, so these are fixed server-side.
 const PHOTO_RESTORE_PROMPT = 'restore and enhance this old photograph: remove scratches and noise, correct faded colors, sharpen details, keep the original composition and people unchanged';
-const FACE_SWAP_PROMPT = 'a natural professional headshot portrait photo, upper body, wearing a business casual shirt or jacket, shoulders and chest fully covered by clothing, studio lighting, high detail, realistic';
+// Face Swap "templates" live in src/libs/FaceSwapStyles.ts — the client only
+// ever sends a style id, never a raw prompt, so every template goes through
+// the same content-safety negative prompt below.
 // Without an explicit clothing instruction the base SDXL model sometimes
 // defaults to bare shoulders/chest — tested live on 2026-07-08 and confirmed.
-// This negative prompt is what actually keeps the output a modest headshot.
+// This negative prompt is what actually keeps every template's output modest.
 const FACE_SWAP_NEGATIVE_PROMPT = 'bad quality, blurry, deformed, nudity, nsfw, shirtless, bare chest, bare shoulders, low-cut clothing, revealing clothing';
 
 // Anti-abuse stopgap until real credit/subscription billing (QPay) is wired
@@ -270,8 +273,16 @@ export async function POST(request: Request) {
     }
 
     // kind === 'face_swap'
+    // Style id comes from the client (a short id, e.g. "deel"), but the
+    // actual prompt text is always resolved server-side from
+    // FACE_SWAP_STYLE_PROMPTS — the client can never inject arbitrary
+    // prompt text into this "prompt-free" tool.
+    const requestedStyle: unknown = body.style;
+    const faceSwapStyle = isFaceSwapStyleId(requestedStyle) ? requestedStyle : DEFAULT_FACE_SWAP_STYLE;
+    const faceSwapPrompt = FACE_SWAP_STYLE_PROMPTS[faceSwapStyle];
+
     const input = buildFaceSwapInput({
-      prompt: FACE_SWAP_PROMPT,
+      prompt: faceSwapPrompt,
       negativePrompt: FACE_SWAP_NEGATIVE_PROMPT,
       imageUrl: body.imageUrl,
     });
@@ -282,7 +293,7 @@ export async function POST(request: Request) {
       ownerId: userId,
       orgId: orgId ?? null,
       kind: 'face_swap',
-      prompt: FACE_SWAP_PROMPT,
+      prompt: faceSwapPrompt,
       jobId: job.id,
       status: job.status,
     }).returning({ id: generationSchema.id });
