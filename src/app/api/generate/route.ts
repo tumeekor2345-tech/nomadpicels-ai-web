@@ -15,6 +15,7 @@ import {
   buildWanInput,
   submitRunPodJob,
 } from '@/libs/RunPod';
+import { translateMongolianToEnglish } from '@/libs/Translate';
 import { creditBalanceSchema, generationSchema } from '@/models/Schema';
 
 /**
@@ -151,6 +152,23 @@ export async function POST(request: Request) {
     );
   }
 
+  // Flux and Wan 2.2's text encoders are trained overwhelmingly on English
+  // data and don't meaningfully understand Mongolian Cyrillic prompts — a
+  // raw Mongolian prompt produces poor/unrelated results. Translate to
+  // English server-side before it reaches RunPod, but keep the user's
+  // original text for isPromptBlocked() (below) and for what's stored/shown
+  // in their generation history. See src/libs/Translate.ts for details.
+  const modelPrompt = needsUserPrompt
+    ? await translateMongolianToEnglish(body.prompt)
+    : body.prompt;
+
+  if (needsUserPrompt && modelPrompt !== body.prompt && isPromptBlocked(modelPrompt)) {
+    return NextResponse.json(
+      { error: 'prompt_blocked', message: 'This prompt violates our content policy.' },
+      { status: 400 },
+    );
+  }
+
   const needsImageUrl = body.kind === 'wan' || body.kind === 'photo_restore' || body.kind === 'face_swap';
   if (needsImageUrl && (!body.imageUrl || typeof body.imageUrl !== 'string')) {
     return NextResponse.json(
@@ -215,13 +233,13 @@ export async function POST(request: Request) {
     if (body.kind === 'flux') {
       const input = usingFluxReference
         ? buildFluxImg2ImgInput(img2imgWorkflow!, {
-            prompt: body.prompt,
+            prompt: modelPrompt,
             imageBase64: body.referenceImageBase64,
             denoise: typeof body.denoise === 'number' ? body.denoise : 0.55,
             seed: body.seed,
           })
         : buildFluxInput(fluxWorkflow!, {
-            prompt: body.prompt,
+            prompt: modelPrompt,
             width: body.width,
             height: body.height,
             seed: body.seed,
@@ -243,7 +261,7 @@ export async function POST(request: Request) {
 
     if (body.kind === 'wan') {
       const input = buildWanInput({
-        prompt: body.prompt,
+        prompt: modelPrompt,
         imageUrl: body.imageUrl,
         negativePrompt: body.negativePrompt,
         durationSeconds: body.durationSeconds,
