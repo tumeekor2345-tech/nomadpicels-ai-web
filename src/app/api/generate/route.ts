@@ -36,7 +36,11 @@ const FLUX_IMG2IMG_WORKFLOW_PATH = path.join(
 // Preset prompts for the one-click "Tools" — the whole point is the user
 // never has to type a prompt, so these are fixed server-side.
 const PHOTO_RESTORE_PROMPT = 'restore and enhance this old photograph: remove scratches and noise, correct faded colors, sharpen details, keep the original composition and people unchanged';
-const FACE_SWAP_PROMPT = 'a natural professional portrait photo, studio lighting, high detail, realistic';
+const FACE_SWAP_PROMPT = 'a natural professional headshot portrait photo, upper body, wearing a business casual shirt or jacket, shoulders and chest fully covered by clothing, studio lighting, high detail, realistic';
+// Without an explicit clothing instruction the base SDXL model sometimes
+// defaults to bare shoulders/chest — tested live on 2026-07-08 and confirmed.
+// This negative prompt is what actually keeps the output a modest headshot.
+const FACE_SWAP_NEGATIVE_PROMPT = 'bad quality, blurry, deformed, nudity, nsfw, shirtless, bare chest, bare shoulders, low-cut clothing, revealing clothing';
 
 // Anti-abuse stopgap until real credit/subscription billing (QPay) is wired
 // up. Not tied to the pricing page's per-plan limits yet — just a blunt cap
@@ -268,6 +272,7 @@ export async function POST(request: Request) {
     // kind === 'face_swap'
     const input = buildFaceSwapInput({
       prompt: FACE_SWAP_PROMPT,
+      negativePrompt: FACE_SWAP_NEGATIVE_PROMPT,
       imageUrl: body.imageUrl,
     });
 
