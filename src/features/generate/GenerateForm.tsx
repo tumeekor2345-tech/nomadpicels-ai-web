@@ -1,11 +1,25 @@
 'use client';
 
+import type {
+  AspectRatioId,
+  LensId,
+  ReferenceInfluence,
+  StyleId,
+} from '@/libs/ImagePresets';
+import { X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  ASPECT_RATIOS,
+  buildFinalPrompt,
+  LENS_PRESETS,
+  REFERENCE_INFLUENCE_DENOISE,
+  STYLE_PRESETS,
+} from '@/libs/ImagePresets';
 import { cn } from '@/utils/Helpers';
 
 type Kind = 'flux' | 'wan';
@@ -59,6 +73,20 @@ export const GenerateForm = (props: {
     resultEmpty: string;
     costNoteImage: string;
     costNoteVideo: string;
+    styleLabel: string;
+    styleNames: Record<StyleId, string>;
+    aspectRatioLabel: string;
+    lensLabel: string;
+    lensHint: string;
+    lensNames: Record<LensId, string>;
+    referenceLabel: string;
+    referenceHint: string;
+    referenceUpload: string;
+    referenceRemove: string;
+    referenceInfluenceLabel: string;
+    referenceInfluenceLow: string;
+    referenceInfluenceMedium: string;
+    referenceInfluenceHigh: string;
   };
 }) => {
   const searchParams = useSearchParams();
@@ -68,6 +96,12 @@ export const GenerateForm = (props: {
   const [prompt, setPrompt] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [duration, setDuration] = useState<5 | 8 | 10 | 15>(5);
+  const [style, setStyle] = useState<StyleId>('none');
+  const [lens, setLens] = useState<LensId>('none');
+  const [aspectRatio, setAspectRatio] = useState<AspectRatioId>('1:1');
+  const [referenceImage, setReferenceImage] = useState<{ dataUrl: string; base64: string } | null>(null);
+  const [referenceInfluence, setReferenceInfluence] = useState<ReferenceInfluence>('medium');
+  const referenceInputRef = useRef<HTMLInputElement | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -155,7 +189,18 @@ export const GenerateForm = (props: {
     setStatusText(props.labels.queued);
 
     const body = kind === 'flux'
-      ? { kind, prompt }
+      ? {
+          kind,
+          prompt: buildFinalPrompt(prompt, style, lens),
+          width: ASPECT_RATIOS.find(r => r.id === aspectRatio)?.width,
+          height: ASPECT_RATIOS.find(r => r.id === aspectRatio)?.height,
+          ...(referenceImage
+            ? {
+                referenceImageBase64: referenceImage.base64,
+                denoise: REFERENCE_INFLUENCE_DENOISE[referenceInfluence],
+              }
+            : {}),
+        }
       : { kind, prompt, imageUrl, durationSeconds: duration };
 
     const res = await fetch('/api/generate', {
@@ -177,6 +222,24 @@ export const GenerateForm = (props: {
     }
 
     pollStatus(kind, data.jobId, Date.now());
+  };
+
+  const handleReferenceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+      const base64 = dataUrl.split(',')[1] ?? '';
+      if (base64) {
+        setReferenceImage({ dataUrl, base64 });
+      }
+    };
+    reader.readAsDataURL(file);
+    // Allow re-selecting the same file later after removing it.
+    e.target.value = '';
   };
 
   const hasResult = images.length > 0 || !!videoUrl || !!rawOutput;
@@ -357,6 +420,154 @@ export const GenerateForm = (props: {
               rows={5}
             />
           </div>
+
+          {kind === 'flux' && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <Label>{props.labels.styleLabel}</Label>
+                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                  {STYLE_PRESETS.map(preset => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => setStyle(preset.id)}
+                      className={cn(
+                        `
+                          shrink-0 rounded-full border px-3 py-1.5 text-xs
+                          font-medium whitespace-nowrap
+                        `,
+                        style === preset.id
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-input bg-transparent text-muted-foreground',
+                      )}
+                    >
+                      {props.labels.styleNames[preset.id]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>{props.labels.aspectRatioLabel}</Label>
+                <div className="flex flex-wrap gap-2">
+                  {ASPECT_RATIOS.map(ratio => (
+                    <button
+                      key={ratio.id}
+                      type="button"
+                      onClick={() => setAspectRatio(ratio.id)}
+                      className={cn(
+                        'rounded-md border px-3 py-1.5 text-xs font-medium',
+                        aspectRatio === ratio.id
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-input bg-transparent text-muted-foreground',
+                      )}
+                    >
+                      {ratio.id}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>{props.labels.lensLabel}</Label>
+                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                  {LENS_PRESETS.map(preset => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => setLens(preset.id)}
+                      className={cn(
+                        `
+                          shrink-0 rounded-full border px-3 py-1.5 text-xs
+                          font-medium whitespace-nowrap
+                        `,
+                        lens === preset.id
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-input bg-transparent text-muted-foreground',
+                      )}
+                    >
+                      {props.labels.lensNames[preset.id]}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-xs text-muted-foreground">{props.labels.lensHint}</div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>{props.labels.referenceLabel}</Label>
+                <div className="text-xs text-muted-foreground">{props.labels.referenceHint}</div>
+
+                <input
+                  ref={referenceInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleReferenceFileChange}
+                />
+
+                {!referenceImage && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => referenceInputRef.current?.click()}
+                  >
+                    {props.labels.referenceUpload}
+                  </Button>
+                )}
+
+                {referenceImage && (
+                  <div className="flex flex-col gap-2">
+                    <div className="relative w-fit">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={referenceImage.dataUrl}
+                        alt="reference"
+                        className="size-24 rounded-md object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setReferenceImage(null)}
+                        className="
+                          absolute -top-2 -right-2 rounded-full bg-destructive
+                          p-1 text-white
+                        "
+                        aria-label={props.labels.referenceRemove}
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label>{props.labels.referenceInfluenceLabel}</Label>
+                      <div className="flex gap-2">
+                        {(['low', 'medium', 'high'] as const).map(level => (
+                          <button
+                            key={level}
+                            type="button"
+                            onClick={() => setReferenceInfluence(level)}
+                            className={cn(
+                              'flex-1 rounded-md border px-2 py-1.5 text-xs',
+                              referenceInfluence === level
+                                ? `
+                                  border-primary bg-primary
+                                  text-primary-foreground
+                                `
+                                : 'border-input bg-transparent',
+                            )}
+                          >
+                            {level === 'low' && props.labels.referenceInfluenceLow}
+                            {level === 'medium' && props.labels.referenceInfluenceMedium}
+                            {level === 'high' && props.labels.referenceInfluenceHigh}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {kind === 'wan' && (
             <>

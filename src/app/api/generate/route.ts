@@ -66,9 +66,11 @@ function loadFluxImg2ImgWorkflow(): ComfyUIWorkflow | null {
   return JSON.parse(fs.readFileSync(FLUX_IMG2IMG_WORKFLOW_PATH, 'utf-8'));
 }
 
-/** Fetches an image URL server-side and returns it as base64 (no external
+/**
+ * Fetches an image URL server-side and returns it as base64 (no external
  * hosting needed — worker-comfyui accepts base64 images in its `images`
- * array and loads them into ComfyUI's input folder before running). */
+ * array and loads them into ComfyUI's input folder before running).
+ */
 async function fetchImageAsBase64(imageUrl: string): Promise<string> {
   const res = await fetch(imageUrl);
   if (!res.ok) {
@@ -157,8 +159,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const fluxWorkflow = body.kind === 'flux' ? loadFluxWorkflow() : null;
-  if (body.kind === 'flux' && !fluxWorkflow) {
+  // The AI Image (Flux) generator's "add reference" feature reuses the same
+  // img2img workflow as Photo Restore — composition/subject-guided
+  // generation, not face-consistency (that would need IP-Adapter, which the
+  // current RunPod worker doesn't bundle).
+  const usingFluxReference = body.kind === 'flux'
+    && typeof body.referenceImageBase64 === 'string'
+    && body.referenceImageBase64.length > 0;
+
+  const fluxWorkflow = (body.kind === 'flux' && !usingFluxReference) ? loadFluxWorkflow() : null;
+  if (body.kind === 'flux' && !usingFluxReference && !fluxWorkflow) {
     return NextResponse.json(
       {
         error: 'flux_workflow_not_configured',
@@ -171,8 +181,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const img2imgWorkflow = body.kind === 'photo_restore' ? loadFluxImg2ImgWorkflow() : null;
-  if (body.kind === 'photo_restore' && !img2imgWorkflow) {
+  const img2imgWorkflow = (body.kind === 'photo_restore' || usingFluxReference) ? loadFluxImg2ImgWorkflow() : null;
+  if ((body.kind === 'photo_restore' || usingFluxReference) && !img2imgWorkflow) {
     return NextResponse.json(
       {
         error: 'img2img_workflow_not_configured',
@@ -203,12 +213,19 @@ export async function POST(request: Request) {
 
   try {
     if (body.kind === 'flux') {
-      const input = buildFluxInput(fluxWorkflow!, {
-        prompt: body.prompt,
-        width: body.width,
-        height: body.height,
-        seed: body.seed,
-      });
+      const input = usingFluxReference
+        ? buildFluxImg2ImgInput(img2imgWorkflow!, {
+            prompt: body.prompt,
+            imageBase64: body.referenceImageBase64,
+            denoise: typeof body.denoise === 'number' ? body.denoise : 0.55,
+            seed: body.seed,
+          })
+        : buildFluxInput(fluxWorkflow!, {
+            prompt: body.prompt,
+            width: body.width,
+            height: body.height,
+            seed: body.seed,
+          });
 
       const job = await submitRunPodJob('flux', input);
 
