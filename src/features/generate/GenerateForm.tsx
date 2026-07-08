@@ -99,6 +99,8 @@ export const GenerateForm = (props: {
     enhanceButton: string;
     enhancing: string;
     enhancePreviewTitle: string;
+    enhanceEnglishPreviewTitle: string;
+    enhanceTranslating: string;
     enhanceUse: string;
     enhanceCancel: string;
     enhanceNotConfigured: string;
@@ -128,7 +130,9 @@ export const GenerateForm = (props: {
   const [referenceInfluence, setReferenceInfluence] = useState<ReferenceInfluence>('medium');
   const referenceInputRef = useRef<HTMLInputElement | null>(null);
   const [enhancing, setEnhancing] = useState(false);
-  const [enhancedPreview, setEnhancedPreview] = useState<string | null>(null);
+  const [enhancedMongolian, setEnhancedMongolian] = useState<string | null>(null);
+  const [englishPreview, setEnglishPreview] = useState<string | null>(null);
+  const [translatingPreview, setTranslatingPreview] = useState(false);
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
@@ -283,7 +287,8 @@ export const GenerateForm = (props: {
 
     setEnhancing(true);
     setEnhanceError(null);
-    setEnhancedPreview(null);
+    setEnhancedMongolian(null);
+    setEnglishPreview(null);
 
     try {
       const res = await fetch('/api/generate/enhance-prompt', {
@@ -304,11 +309,42 @@ export const GenerateForm = (props: {
         return;
       }
 
-      setEnhancedPreview(data.enhancedPrompt);
+      setEnhancedMongolian(data.enhancedPrompt);
+      setEnglishPreview(data.englishPreview);
     } catch {
       setEnhanceError(props.labels.enhanceFailed);
     } finally {
       setEnhancing(false);
+    }
+  };
+
+  // Called when the user finishes editing the Mongolian enhanced-idea box
+  // (onBlur) — refreshes the read-only English translation preview next to
+  // it. Deliberately a plain translation call, not another full Claude
+  // enhancement (see src/app/api/generate/translate-prompt/route.ts).
+  const handlePreviewBlur = async () => {
+    if (!enhancedMongolian || !enhancedMongolian.trim()) {
+      return;
+    }
+
+    setTranslatingPreview(true);
+
+    try {
+      const res = await fetch('/api/generate/translate-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: enhancedMongolian }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setEnglishPreview(data.translated);
+      }
+    } catch {
+      // Keep the previous preview on failure — not worth surfacing an error
+      // for a background refresh.
+    } finally {
+      setTranslatingPreview(false);
     }
   };
 
@@ -507,20 +543,40 @@ export const GenerateForm = (props: {
               <div className="text-xs font-medium text-destructive">{enhanceError}</div>
             )}
 
-            {enhancedPreview && (
+            {enhancedMongolian !== null && (
               <div className="
-                flex flex-col gap-2 rounded-md border border-input bg-muted p-3
+                flex flex-col gap-3 rounded-md border border-input bg-muted p-3
               "
               >
-                <div className="text-xs font-semibold">{props.labels.enhancePreviewTitle}</div>
-                <div className="text-sm text-muted-foreground">{enhancedPreview}</div>
+                <div className="flex flex-col gap-1.5">
+                  <div className="text-xs font-semibold">{props.labels.enhancePreviewTitle}</div>
+                  <Textarea
+                    value={enhancedMongolian}
+                    onChange={e => setEnhancedMongolian(e.target.value)}
+                    onBlur={handlePreviewBlur}
+                    rows={4}
+                    className="bg-background"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <div className="text-xs font-semibold">{props.labels.enhanceEnglishPreviewTitle}</div>
+                  <div className="
+                    rounded-md bg-background p-2 text-sm text-muted-foreground
+                  "
+                  >
+                    {translatingPreview ? props.labels.enhanceTranslating : englishPreview}
+                  </div>
+                </div>
+
                 <div className="flex gap-2">
                   <Button
                     type="button"
                     size="sm"
                     onClick={() => {
-                      setPrompt(enhancedPreview);
-                      setEnhancedPreview(null);
+                      setPrompt(enhancedMongolian);
+                      setEnhancedMongolian(null);
+                      setEnglishPreview(null);
                     }}
                   >
                     {props.labels.enhanceUse}
@@ -529,7 +585,10 @@ export const GenerateForm = (props: {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setEnhancedPreview(null)}
+                    onClick={() => {
+                      setEnhancedMongolian(null);
+                      setEnglishPreview(null);
+                    }}
                   >
                     {props.labels.enhanceCancel}
                   </Button>

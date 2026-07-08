@@ -2,12 +2,17 @@
  * AI-assisted prompt enhancement for users who type a short or vague idea for
  * their AI Image/Video generation (e.g. "морь унасан хүн" instead of a full,
  * detailed prompt). Calls Claude (Anthropic Messages API) to expand the
- * user's idea into a single, detailed English prompt suitable for Flux
- * (image) or Wan 2.2 (video).
+ * user's idea into a single, detailed prompt — written in Mongolian, so the
+ * user can read and further edit it themselves — suitable for Flux (image)
+ * or Wan 2.2 (video) once translated to English.
  *
  * This is always a user-initiated preview ("Санаагаа сайжруул" button in
- * GenerateForm) that the user explicitly approves before it replaces their
- * prompt text — never applied silently, unlike src/libs/Translate.ts.
+ * GenerateForm): the user sees the Mongolian-enhanced idea (editable) plus a
+ * live English translation preview, and explicitly approves it before it
+ * replaces their prompt text — never applied silently, unlike
+ * src/libs/Translate.ts. The English translation itself is produced by
+ * src/libs/Translate.ts's translateMongolianToEnglish() (called from the
+ * route handlers), not by this module.
  *
  * Requires ANTHROPIC_API_KEY to be set (Vercel project env vars, or
  * .env.local for local dev). Get a key at https://console.anthropic.com.
@@ -28,12 +33,12 @@ function systemPromptFor(kind: 'flux' | 'wan'): string {
 
   return [
     'You help users of a Mongolian AI image/video generation platform who type short, vague ideas for what they want to generate.',
-    'Expand the user\'s idea (given in Mongolian or English) into ONE detailed, vivid prompt in English, suitable for a diffusion model.',
+    'Expand the user\'s idea (given in Mongolian or English) into ONE detailed, vivid description, written in natural, fluent Mongolian (Cyrillic script) — regardless of what language the user\'s input is in. The user needs to read and edit this themselves, so it must be in Mongolian, not English.',
     'Add sensible, concrete details about subject, setting, lighting, mood, and composition — but do not invent details that contradict or wildly diverge from what the user asked for.',
     mediumNote,
     'Keep the result under 70 words.',
     `If the request describes sexual content involving minors, non-consensual sexual content, or other clearly disallowed content, respond with exactly the single word ${REFUSAL_MARKER} and nothing else.`,
-    'Otherwise, respond with ONLY the enhanced prompt text — no preamble, no quotation marks, no explanation.',
+    'Otherwise, respond with ONLY the enhanced Mongolian description — no preamble, no quotation marks, no explanation, and do not include any English translation.',
   ].join(' ');
 }
 
@@ -42,9 +47,9 @@ export type EnhanceResult
     | { ok: false; reason: 'blocked' | 'not_configured' | 'failed' };
 
 /**
- * Expands `rawPrompt` into a detailed English prompt via Claude Haiku. Never
- * throws — any failure (missing key, timeout, network error, malformed
- * response) is reported as a typed failure reason instead.
+ * Expands `rawPrompt` into a detailed Mongolian description via Claude
+ * Haiku. Never throws — any failure (missing key, timeout, network error,
+ * malformed response) is reported as a typed failure reason instead.
  */
 export async function enhancePrompt(rawPrompt: string, kind: 'flux' | 'wan'): Promise<EnhanceResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;

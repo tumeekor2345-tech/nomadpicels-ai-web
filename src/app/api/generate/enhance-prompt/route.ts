@@ -2,13 +2,17 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { isPromptBlocked } from '@/libs/ContentModeration';
 import { enhancePrompt } from '@/libs/PromptEnhance';
+import { translateMongolianToEnglish } from '@/libs/Translate';
 
 /**
  * User-initiated "Санаагаа сайжруул" (Improve my idea) preview — expands a
- * short/vague prompt into a detailed one via Claude Haiku (see
- * src/libs/PromptEnhance.ts). The client shows the result to the user and
- * only uses it if they explicitly approve it; nothing here submits a
- * generation job.
+ * short/vague prompt into a detailed Mongolian description via Claude Haiku
+ * (see src/libs/PromptEnhance.ts), plus an English translation preview of
+ * that same text (see src/libs/Translate.ts) so the user can see roughly
+ * what will actually reach Flux/Wan. The client shows both — the Mongolian
+ * text is editable, the English translation is read-only — and only uses
+ * the (possibly edited) Mongolian text if the user explicitly approves it.
+ * Nothing here submits a generation job.
  */
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -49,14 +53,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'enhance_failed' }, { status: 502 });
   }
 
-  // Belt-and-suspenders: also check whatever Claude produced, in case the
-  // model's own refusal instruction didn't trigger for some edge case.
-  if (isPromptBlocked(result.enhancedPrompt)) {
+  // Translate immediately so the UI can show a "ready to use" English
+  // preview alongside the editable Mongolian text.
+  const englishPreview = await translateMongolianToEnglish(result.enhancedPrompt);
+
+  // Belt-and-suspenders: also check whatever Claude produced (and its
+  // translation), in case the model's own refusal instruction didn't
+  // trigger for some edge case. isPromptBlocked() is English-only, so the
+  // translated text is the one that actually matters here.
+  if (isPromptBlocked(result.enhancedPrompt) || isPromptBlocked(englishPreview)) {
     return NextResponse.json(
       { error: 'prompt_blocked', message: 'This prompt violates our content policy.' },
       { status: 400 },
     );
   }
 
-  return NextResponse.json({ enhancedPrompt: result.enhancedPrompt });
+  return NextResponse.json({ enhancedPrompt: result.enhancedPrompt, englishPreview });
 }

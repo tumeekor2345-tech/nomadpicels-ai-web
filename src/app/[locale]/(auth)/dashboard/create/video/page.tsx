@@ -77,6 +77,8 @@ export default async function CreateVideoPage(props: {
           enhanceButton: t('enhance_button'),
           enhancing: t('enhancing'),
           enhancePreviewTitle: t('enhance_preview_title'),
+          enhanceEnglishPreviewTitle: t('enhance_english_preview_title'),
+          enhanceTranslating: t('enhance_translating'),
           enhanceUse: t('enhance_use'),
           enhanceCancel: t('enhance_cancel'),
           enhanceNotConfigured: t('enhance_not_configured'),
