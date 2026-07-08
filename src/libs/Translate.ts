@@ -32,6 +32,32 @@ export function containsCyrillic(text: string): boolean {
 const MYMEMORY_ENDPOINT = 'https://api.mymemory.translated.net/get';
 const TRANSLATE_TIMEOUT_MS = 6000;
 
+async function myMemoryTranslate(text: string, langpair: string): Promise<string | null> {
+  try {
+    const url = `${MYMEMORY_ENDPOINT}?q=${encodeURIComponent(text)}&langpair=${langpair}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TRANSLATE_TIMEOUT_MS);
+
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const data = await res.json();
+    const translated = data?.responseData?.translatedText;
+
+    if (typeof translated === 'string' && translated.trim().length > 0) {
+      return translated;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Translates `text` from Mongolian to English if it contains any Cyrillic
  * characters; otherwise returns it unchanged (already-English prompts skip
@@ -44,27 +70,20 @@ export async function translateMongolianToEnglish(text: string): Promise<string>
     return text;
   }
 
-  try {
-    const url = `${MYMEMORY_ENDPOINT}?q=${encodeURIComponent(text)}&langpair=mn|en`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), TRANSLATE_TIMEOUT_MS);
+  const translated = await myMemoryTranslate(text, 'mn|en');
+  return translated ?? text;
+}
 
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      return text;
-    }
-
-    const data = await res.json();
-    const translated = data?.responseData?.translatedText;
-
-    if (typeof translated === 'string' && translated.trim().length > 0) {
-      return translated;
-    }
-
-    return text;
-  } catch {
-    return text;
-  }
+/**
+ * Translates `text` from English to Mongolian. Used by the prompt enhancer
+ * (src/libs/PromptEnhance.ts) to give the user a readable, editable
+ * Mongolian preview of Claude's English-language enhanced description — see
+ * that module for why the enhancement itself is generated in English rather
+ * than Mongolian. Never throws — any failure falls back to the original
+ * (English) text, so a translation hiccup just means the preview box shows
+ * English instead of Mongolian rather than breaking anything.
+ */
+export async function translateEnglishToMongolian(text: string): Promise<string> {
+  const translated = await myMemoryTranslate(text, 'en|mn');
+  return translated ?? text;
 }

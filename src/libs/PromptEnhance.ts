@@ -2,17 +2,26 @@
  * AI-assisted prompt enhancement for users who type a short or vague idea for
  * their AI Image/Video generation (e.g. "морь унасан хүн" instead of a full,
  * detailed prompt). Calls Claude (Anthropic Messages API) to expand the
- * user's idea into a single, detailed prompt — written in Mongolian, so the
- * user can read and further edit it themselves — suitable for Flux (image)
- * or Wan 2.2 (video) once translated to English.
+ * user's idea into a single, detailed prompt — written in ENGLISH.
+ *
+ * Why English and not Mongolian: an earlier version asked Claude to write
+ * the enhanced description directly in Mongolian, since that's what the user
+ * needs to read/edit. In practice Claude Haiku's free-form Mongolian writing
+ * is unreliable — it produced incoherent, word-salad text often enough to be
+ * a real problem (reported by a live user: nonsense phrases like "эвэртэй
+ * туулай" showing up in otherwise unrelated descriptions). Haiku's English
+ * writing is strong, and English is also what Flux/Wan actually consume. So
+ * this module always produces English, and the route handler
+ * (src/app/api/generate/enhance-prompt/route.ts) translates that English
+ * text to Mongolian via src/libs/Translate.ts's translateEnglishToMongolian()
+ * purely for display/editing — translation is a much more constrained task
+ * than free creative writing and doesn't exhibit the same failure mode.
  *
  * This is always a user-initiated preview ("Санаагаа сайжруул" button in
- * GenerateForm): the user sees the Mongolian-enhanced idea (editable) plus a
- * live English translation preview, and explicitly approves it before it
- * replaces their prompt text — never applied silently, unlike
- * src/libs/Translate.ts. The English translation itself is produced by
- * src/libs/Translate.ts's translateMongolianToEnglish() (called from the
- * route handlers), not by this module.
+ * GenerateForm): the user sees the Mongolian preview (editable) plus the
+ * underlying English text, and explicitly approves it before it replaces
+ * their prompt text — never applied silently, unlike src/libs/Translate.ts's
+ * automatic translation at generation time.
  *
  * Requires ANTHROPIC_API_KEY to be set (Vercel project env vars, or
  * .env.local for local dev). Get a key at https://console.anthropic.com.
@@ -33,12 +42,12 @@ function systemPromptFor(kind: 'flux' | 'wan'): string {
 
   return [
     'You help users of a Mongolian AI image/video generation platform who type short, vague ideas for what they want to generate.',
-    'Expand the user\'s idea (given in Mongolian or English) into ONE detailed, vivid description, written in natural, fluent Mongolian (Cyrillic script) — regardless of what language the user\'s input is in. The user needs to read and edit this themselves, so it must be in Mongolian, not English.',
+    'Expand the user\'s idea (given in Mongolian or English) into ONE detailed, vivid description, written in clear, natural, fluent English — regardless of what language the user\'s input is in. This English text will be shown to the user translated back into Mongolian for review, and will also be used directly to drive the image/video generation model, so it must be grammatically correct, concrete, and coherent.',
     'Add sensible, concrete details about subject, setting, lighting, mood, and composition — but do not invent details that contradict or wildly diverge from what the user asked for.',
     mediumNote,
     'Keep the result under 70 words.',
     `If the request describes sexual content involving minors, non-consensual sexual content, or other clearly disallowed content, respond with exactly the single word ${REFUSAL_MARKER} and nothing else.`,
-    'Otherwise, respond with ONLY the enhanced Mongolian description — no preamble, no quotation marks, no explanation, and do not include any English translation.',
+    'Otherwise, respond with ONLY the enhanced English description — no preamble, no quotation marks, no explanation.',
   ].join(' ');
 }
 
@@ -47,8 +56,8 @@ export type EnhanceResult
     | { ok: false; reason: 'blocked' | 'not_configured' | 'failed' };
 
 /**
- * Expands `rawPrompt` into a detailed Mongolian description via Claude
- * Haiku. Never throws — any failure (missing key, timeout, network error,
+ * Expands `rawPrompt` into a detailed English description via Claude Haiku.
+ * Never throws — any failure (missing key, timeout, network error,
  * malformed response) is reported as a typed failure reason instead.
  */
 export async function enhancePrompt(rawPrompt: string, kind: 'flux' | 'wan'): Promise<EnhanceResult> {
