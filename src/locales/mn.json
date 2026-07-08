@@ -161,6 +161,7 @@
     "face_swap_style_cyberpunk": "Cyberpunk ирээдүй",
     "voice_title": "Хоолойны өнгө хувиргах",
     "voice_description": "Бичлэгийн хоолойг бүдүүн, нарийн, эмэгтэй, хүүхдийн хоолой болгож хувиргана (AI биш)",
+    "image_url_label": "Эх зургийн URL",
     "image_url_placeholder": "https://example.com/photo.jpg",
     "run": "Эхлүүлэх",
     "running": "Ажиллаж байна...",
@@ -176,7 +177,13 @@
     "voice_child": "Хүүхэд",
     "voice_robot": "Робот",
     "voice_processing": "Боловсруулж байна...",
-    "voice_play_original": "Эх бичлэг (харьцуулж сонсоно уу)"
+    "voice_play_original": "Эх бичлэг (харьцуулж сонсоно уу)",
+    "back_to_tools": "Tools руу буцах",
+    "open": "Нээх",
+    "result_title": "Үр дүн",
+    "result_empty": "Таны үүсгэсэн үр дүн энд харагдана.",
+    "history_title": "Таны үүсгэсэн зураг",
+    "history_empty": "Одоохондоо юу ч үүсгээгүй байна."
   },
   "BillingPage": {
     "title_bar": "Төлбөр",

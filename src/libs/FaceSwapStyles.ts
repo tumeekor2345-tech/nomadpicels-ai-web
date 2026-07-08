@@ -39,6 +39,21 @@ export const FACE_SWAP_STYLE_PROMPTS: Record<FaceSwapStyleId, string> = {
 
 export const FACE_SWAP_STYLE_IDS = Object.keys(FACE_SWAP_STYLE_PROMPTS) as FaceSwapStyleId[];
 
+// Static preview thumbnails shown on the style picker cards — generated once
+// via /api/admin/faceswap-preview (text-only mode, no real user face) and
+// committed under public/face-swap-styles/*.jpg. These are just illustrative
+// previews of each style/scene, not tied to any specific user's photo.
+export const FACE_SWAP_STYLE_IMAGES: Record<FaceSwapStyleId, string> = {
+  business: '/face-swap-styles/business.jpg',
+  deel: '/face-swap-styles/deel.jpg',
+  wedding: '/face-swap-styles/wedding.jpg',
+  glamour: '/face-swap-styles/glamour.jpg',
+  fantasy: '/face-swap-styles/fantasy.jpg',
+  graduation: '/face-swap-styles/graduation.jpg',
+  vintage: '/face-swap-styles/vintage.jpg',
+  cyberpunk: '/face-swap-styles/cyberpunk.jpg',
+};
+
 export function isFaceSwapStyleId(value: unknown): value is FaceSwapStyleId {
   return typeof value === 'string' && Object.hasOwn(FACE_SWAP_STYLE_PROMPTS, value);
 }
