@@ -5,6 +5,7 @@ import { auth } from '@clerk/nextjs/server';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { isAdminUser } from '@/libs/Admin';
+import { reinforceFullBodyFraming } from '@/libs/CompositionReinforcement';
 import { isPromptBlocked } from '@/libs/ContentModeration';
 import { db } from '@/libs/DB';
 import { reinforceEthnicity } from '@/libs/EthnicityReinforcement';
@@ -176,8 +177,16 @@ export async function POST(request: Request) {
   // anchored in the prompt. When the user asked for a Mongolian person,
   // front-load an explicit anchor phrase so the model actually renders one.
   // See src/libs/EthnicityReinforcement.ts.
+  //
+  // That front-loaded anchor ("...East Asian facial features...") competes
+  // with the user's own framing request, though — live-tested 2026-07-09:
+  // a "full body" request still came back as a tight face crop because the
+  // early "facial features" tokens dominate Flux schnell's few-step
+  // sampling. reinforceFullBodyFraming() fights back by restating an
+  // explicit full-body instruction at the END of the prompt when the user
+  // asked for it. See src/libs/CompositionReinforcement.ts.
   const modelPrompt = needsUserPrompt
-    ? reinforceEthnicity(body.prompt, translatedPrompt)
+    ? reinforceFullBodyFraming(body.prompt, reinforceEthnicity(body.prompt, translatedPrompt))
     : translatedPrompt;
 
   if (needsUserPrompt && modelPrompt !== body.prompt && isPromptBlocked(modelPrompt)) {
