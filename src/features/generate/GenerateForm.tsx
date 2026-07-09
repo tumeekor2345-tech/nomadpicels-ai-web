@@ -106,6 +106,10 @@ export const GenerateForm = (props: {
     enhanceNotConfigured: string;
     enhanceFailed: string;
     enhanceBlocked: string;
+    finalPromptTitle: string;
+    finalPromptHint: string;
+    finalPromptLoading: string;
+    finalPromptRefresh: string;
   };
   /**
    * When set, this form is locked to a single mode (dedicated Image or Video
@@ -149,6 +153,71 @@ export const GenerateForm = (props: {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // "Эцсийн Prompt" — stage 3 of the 4-stage pipeline in
+  // src/libs/PromptPipeline.ts, exposed 2026-07-09 so the user can see (and
+  // edit) the exact English text that will reach Flux/Wan, instead of the
+  // translation + ethnicity/composition reinforcement happening invisibly
+  // server-side. Auto-refreshes (debounced) whenever the source prompt/style/
+  // lens changes, UNLESS the user has hand-edited the box — editing it stops
+  // auto-refresh from clobbering their edit until they explicitly click
+  // "Шинэчлэх". Whatever is in this box at submit time is sent as
+  // `finalPromptOverride` and used as-is server-side.
+  const [finalPrompt, setFinalPrompt] = useState('');
+  const [finalPromptLoading, setFinalPromptLoading] = useState(false);
+  const [finalPromptEdited, setFinalPromptEdited] = useState(false);
+  const finalPromptDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const sourcePromptForPreview = kind === 'flux' ? buildFinalPrompt(prompt, style, lens) : prompt;
+
+  const fetchFinalPromptPreview = async (source: string) => {
+    if (!source.trim()) {
+      setFinalPrompt('');
+      return;
+    }
+
+    setFinalPromptLoading(true);
+
+    try {
+      const res = await fetch('/api/generate/preview-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: source }),
+      });
+      const data = await res.json();
+
+      if (res.ok && typeof data.finalPrompt === 'string') {
+        setFinalPrompt(data.finalPrompt);
+      }
+    } catch {
+      // Silent — the box just keeps showing the last known value. Submit
+      // still works without a fresh preview (server recomputes it anyway
+      // when finalPromptOverride is empty).
+    } finally {
+      setFinalPromptLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (finalPromptEdited) {
+      return;
+    }
+
+    if (finalPromptDebounce.current) {
+      clearTimeout(finalPromptDebounce.current);
+    }
+
+    finalPromptDebounce.current = setTimeout(() => {
+      fetchFinalPromptPreview(sourcePromptForPreview);
+    }, 600);
+
+    return () => {
+      if (finalPromptDebounce.current) {
+        clearTimeout(finalPromptDebounce.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourcePromptForPreview, finalPromptEdited]);
 
   useEffect(() => {
     let cancelled = false;
@@ -226,10 +295,16 @@ export const GenerateForm = (props: {
     setSubmitting(true);
     setStatusText(props.labels.queued);
 
+    // Whatever is currently in the "Эцсийн Prompt" box (stage 3 — see
+    // src/libs/PromptPipeline.ts) is sent as finalPromptOverride, so the
+    // server uses it as-is instead of recomputing translate+reinforce. This
+    // is what makes the exposed box actually control generation, not just
+    // display info.
     const body = kind === 'flux'
       ? {
           kind,
           prompt: buildFinalPrompt(prompt, style, lens),
+          finalPromptOverride: finalPrompt,
           width: ASPECT_RATIOS.find(r => r.id === aspectRatio)?.width,
           height: ASPECT_RATIOS.find(r => r.id === aspectRatio)?.height,
           ...(referenceImage
@@ -242,6 +317,7 @@ export const GenerateForm = (props: {
       : {
           kind,
           prompt,
+          finalPromptOverride: finalPrompt,
           imageUrl,
           durationSeconds: duration,
           size: WAN_SIZES.find(r => r.id === wanAspectRatio)?.size,
@@ -601,6 +677,41 @@ export const GenerateForm = (props: {
                 </div>
               </div>
             )}
+          </div>
+
+          <div className="
+            flex flex-col gap-1.5 rounded-md border border-input bg-muted p-3
+          "
+          >
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="finalPrompt" className="text-xs font-semibold">
+                {props.labels.finalPromptTitle}
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => {
+                  setFinalPromptEdited(false);
+                  fetchFinalPromptPreview(sourcePromptForPreview);
+                }}
+              >
+                {props.labels.finalPromptRefresh}
+              </Button>
+            </div>
+            <div className="text-xs text-muted-foreground">{props.labels.finalPromptHint}</div>
+            <Textarea
+              id="finalPrompt"
+              value={finalPromptLoading ? props.labels.finalPromptLoading : finalPrompt}
+              disabled={finalPromptLoading}
+              onChange={(e) => {
+                setFinalPrompt(e.target.value);
+                setFinalPromptEdited(true);
+              }}
+              rows={4}
+              className="bg-background text-xs"
+            />
           </div>
 
           {kind === 'flux' && (

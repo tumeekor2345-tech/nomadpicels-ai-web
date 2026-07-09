@@ -209,7 +209,11 @@
     "enhance_cancel": "Cancel",
     "enhance_not_configured": "This feature isn't set up yet.",
     "enhance_failed": "Couldn't improve it — try again.",
-    "enhance_blocked": "This idea violates our content policy."
+    "enhance_blocked": "This idea violates our content policy.",
+    "final_prompt_title": "Final Prompt (sent to Flux/Wan)",
+    "final_prompt_hint": "The actual text after translation and ethnicity/framing reinforcement. Editable — whatever is here is what gets sent.",
+    "final_prompt_loading": "Computing...",
+    "final_prompt_refresh": "Refresh"
   },
   "ToolsPage": {
     "title_bar": "Tools",

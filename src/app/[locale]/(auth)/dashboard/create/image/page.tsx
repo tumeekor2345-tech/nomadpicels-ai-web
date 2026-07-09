@@ -84,6 +84,10 @@ export default async function CreateImagePage(props: {
           enhanceNotConfigured: t('enhance_not_configured'),
           enhanceFailed: t('enhance_failed'),
           enhanceBlocked: t('enhance_blocked'),
+          finalPromptTitle: t('final_prompt_title'),
+          finalPromptHint: t('final_prompt_hint'),
+          finalPromptLoading: t('final_prompt_loading'),
+          finalPromptRefresh: t('final_prompt_refresh'),
         }}
       />
     </>

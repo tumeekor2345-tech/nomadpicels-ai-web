@@ -5,10 +5,8 @@ import { auth } from '@clerk/nextjs/server';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { isAdminUser } from '@/libs/Admin';
-import { reinforceFullBodyFraming } from '@/libs/CompositionReinforcement';
 import { isPromptBlocked } from '@/libs/ContentModeration';
 import { db } from '@/libs/DB';
-import { reinforceEthnicity } from '@/libs/EthnicityReinforcement';
 import { DEFAULT_FACE_SWAP_STYLE, FACE_SWAP_STYLE_PROMPTS, isFaceSwapStyleId } from '@/libs/FaceSwapStyles';
 import {
   buildImageEffectPrompt,
@@ -18,6 +16,7 @@ import {
   STYLE_PRESETS,
 } from '@/libs/ImagePresets';
 import { CREDIT_COST } from '@/libs/Pricing';
+import { buildFinalModelPrompt } from '@/libs/PromptPipeline';
 import {
   buildFaceSwapInput,
   buildFluxImg2ImgInput,
@@ -25,7 +24,6 @@ import {
   buildWanInput,
   submitRunPodJob,
 } from '@/libs/RunPod';
-import { translateMongolianToEnglish } from '@/libs/Translate';
 import { creditBalanceSchema, generationSchema } from '@/models/Schema';
 
 /**
@@ -162,32 +160,22 @@ export async function POST(request: Request) {
     );
   }
 
-  // Flux and Wan 2.2's text encoders are trained overwhelmingly on English
-  // data and don't meaningfully understand Mongolian Cyrillic prompts — a
-  // raw Mongolian prompt produces poor/unrelated results. Translate to
-  // English server-side before it reaches RunPod, but keep the user's
-  // original text for isPromptBlocked() (below) and for what's stored/shown
-  // in their generation history. See src/libs/Translate.ts for details.
-  const translatedPrompt = needsUserPrompt
-    ? await translateMongolianToEnglish(body.prompt)
-    : body.prompt;
-
-  // Diffusion models (Flux schnell included) default toward generic,
-  // Western-leaning faces unless ethnicity is explicitly and prominently
-  // anchored in the prompt. When the user asked for a Mongolian person,
-  // front-load an explicit anchor phrase so the model actually renders one.
-  // See src/libs/EthnicityReinforcement.ts.
-  //
-  // That front-loaded anchor ("...East Asian facial features...") competes
-  // with the user's own framing request, though — live-tested 2026-07-09:
-  // a "full body" request still came back as a tight face crop because the
-  // early "facial features" tokens dominate Flux schnell's few-step
-  // sampling. reinforceFullBodyFraming() fights back by restating an
-  // explicit full-body instruction at the END of the prompt when the user
-  // asked for it. See src/libs/CompositionReinforcement.ts.
+  // 4-stage prompt pipeline (see src/libs/PromptPipeline.ts for the full
+  // breakdown: translate -> reinforce ethnicity/composition -> preview/edit
+  // -> send to RunPod). Stage 3 is client-side: GenerateForm.tsx calls
+  // POST /api/generate/preview-prompt to show the user the exact text stage
+  // 1-2 would produce, and if the user edits that box, the edited text comes
+  // back here as `finalPromptOverride` and is used AS-IS — stages 1-2 are
+  // skipped entirely for that generation. Added 2026-07-09 after several
+  // rounds of invisible reinforcement made the bust-crop framing bug hard to
+  // debug from outside; the user asked to expose the real final prompt
+  // rather than keep guessing at it blind.
+  const hasOverride = needsUserPrompt
+    && typeof body.finalPromptOverride === 'string'
+    && body.finalPromptOverride.trim().length > 0;
   const modelPrompt = needsUserPrompt
-    ? reinforceFullBodyFraming(body.prompt, reinforceEthnicity(body.prompt, translatedPrompt))
-    : translatedPrompt;
+    ? (hasOverride ? body.finalPromptOverride.trim() : await buildFinalModelPrompt(body.prompt))
+    : body.prompt;
 
   if (needsUserPrompt && modelPrompt !== body.prompt && isPromptBlocked(modelPrompt)) {
     return NextResponse.json(
