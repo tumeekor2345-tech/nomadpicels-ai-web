@@ -4,6 +4,7 @@ import path from 'node:path';
 import { auth } from '@clerk/nextjs/server';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { isAdminUser } from '@/libs/Admin';
 import { isPromptBlocked } from '@/libs/ContentModeration';
 import { db } from '@/libs/DB';
 import { reinforceEthnicity } from '@/libs/EthnicityReinforcement';
@@ -228,13 +229,18 @@ export async function POST(request: Request) {
     );
   }
 
+  // Admin users (see src/libs/Admin.ts) bypass both the credit cost and the
+  // daily generation limit entirely — they never spend credits and are never
+  // subject to DAILY_GENERATION_LIMIT.
+  //
   // Paying users: spend credits and skip the free daily cap entirely.
   // Free users (no credits, or insufficient balance): fall back to the
   // existing anti-abuse daily limit.
+  const isAdmin = await isAdminUser(userId);
   const creditCost = CREDIT_COST[body.kind as keyof typeof CREDIT_COST];
-  const paidWithCredits = await trySpendCredits(userId, creditCost);
+  const paidWithCredits = isAdmin ? false : await trySpendCredits(userId, creditCost);
 
-  if (!paidWithCredits) {
+  if (!isAdmin && !paidWithCredits) {
     const usedToday = await countGenerationsToday(userId);
     if (usedToday >= DAILY_GENERATION_LIMIT) {
       return NextResponse.json(
