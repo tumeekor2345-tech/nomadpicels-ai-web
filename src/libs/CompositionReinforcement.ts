@@ -17,12 +17,28 @@
  * prompt tokens much more literally than it resolves competing instructions
  * spread across a long prompt, so the early anchor wins.
  *
- * Fix: don't remove the ethnicity anchor (it's still needed — see that
- * module's own comment on why), but fight back by ALSO appending an explicit
- * framing instruction at the very END of the prompt when the user actually
- * asked for full-body/wide framing. End-of-prompt position carries real
- * weight in T5/CLIP encoding too, so restating the instruction there is a
- * standard diffusion prompt-engineering counter-move, not a hack.
+ * Fix, round 1 (kept): don't remove the ethnicity anchor (it's still
+ * needed — see that module's own comment on why), but fight back by ALSO
+ * appending an explicit framing instruction at the very END of the prompt
+ * when the user actually asked for full-body/wide framing. End-of-prompt
+ * position carries real weight in T5/CLIP encoding too, so restating the
+ * instruction there is a standard diffusion prompt-engineering counter-move,
+ * not a hack.
+ *
+ * Fix, round 2 (2026-07-09, same day): round 1 alone still wasn't enough —
+ * live-tested again after also softening EthnicityReinforcement.ts's anchor
+ * (dropped "facial"), and the result was wider but still not a true
+ * head-to-toe shot. Strengthened further: (a) also PREPEND a short framing
+ * cue at the very front, since front-token position is clearly the strongest
+ * lever here (that's exactly why the ethnicity anchor was winning before);
+ * (b) use ComfyUI's `(text:weight)` emphasis syntax, which CLIPTextEncode
+ * supports for both the CLIP-L and T5-XXL encoders Flux uses — untested
+ * whether schnell's guidance-free BasicGuider respects it as strongly as a
+ * CFG-based model would, but it's a low-risk, standard technique worth
+ * stacking on; (c) name concrete body parts (feet, shoes, legs) instead of
+ * only the abstract phrase "full body" — diffusion models are generally more
+ * reliable at rendering toward concrete nameable objects than abstract
+ * framing concepts.
  */
 
 // Matches common Mongolian phrasings for "full body" plus the English
@@ -32,19 +48,22 @@
 // framing anyway.
 const FULL_BODY_TRIGGER = /бүтэн\s*би|толгойгоос\s*хөл|бүх\s*бие|орой\s*дов\s*хүртэл|зогсож\s*байгаа|дүрс\s*бүрэн|full[\s-]?body|head\s*to\s*toe|whole\s*body/i;
 
-const FULL_BODY_ANCHOR = 'full-body shot, entire figure visible from head to toe, wide framing, subject standing at a distance from the camera';
+const FULL_BODY_FRONT_CUE = '(full-body photograph:1.4)';
+
+const FULL_BODY_END_ANCHOR = '(full body shot:1.4), (wide shot, entire person visible from head to toe:1.3), feet and shoes visible, legs fully visible, standing at full height, small figure within a large scene, distant full-length photograph';
 
 /**
- * If the user's original prompt asked for full-body/wide framing, appends an
- * explicit framing anchor to the end of the already-translated,
- * ethnicity-reinforced model prompt. Safe no-op otherwise. Order in
- * src/app/api/generate/route.ts: call this AFTER reinforceEthnicity(), not
- * before — it appends to whatever reinforceEthnicity() already produced.
+ * If the user's original prompt asked for full-body/wide framing, wraps the
+ * already-translated, ethnicity-reinforced model prompt with an explicit
+ * framing cue at the front AND a more detailed one at the end. Safe no-op
+ * otherwise. Order in src/app/api/generate/route.ts: call this AFTER
+ * reinforceEthnicity(), not before — it wraps whatever reinforceEthnicity()
+ * already produced.
  */
 export function reinforceFullBodyFraming(originalPrompt: string, modelPrompt: string): string {
   if (!FULL_BODY_TRIGGER.test(originalPrompt)) {
     return modelPrompt;
   }
 
-  return `${modelPrompt}, ${FULL_BODY_ANCHOR}`;
+  return `${FULL_BODY_FRONT_CUE}, ${modelPrompt}, ${FULL_BODY_END_ANCHOR}`;
 }

@@ -64,7 +64,19 @@ const PERSON_WORDS = [
 
 const PERSON_TRIGGER = new RegExp(PERSON_WORDS.join('|'), 'i');
 
-const ETHNICITY_ANCHOR = 'Mongolian ethnicity, East Asian facial features';
+// Was 'Mongolian ethnicity, East Asian facial features' until 2026-07-09.
+// Live-tested that day: even after removing the Mongolian LoRA (a separate,
+// now-removed cause of tight crops — see src/libs/RunPod.ts), "full body"
+// requests still came back as bust/shoulders-up crops. Traced to this exact
+// phrase: "facial features" as the very first 2-3 tokens of the whole model
+// prompt primes Flux schnell to treat the face as the subject to frame
+// tightly around, overpowering framing instructions that appear later in
+// the prompt. Dropped "facial" — "features" alone still anchors ethnicity
+// (cheekbones, eye shape, etc. per the module comment below) without
+// explicitly telling the model to focus on the face specifically. Paired
+// with src/libs/CompositionReinforcement.ts, which fights back from the
+// other end of the prompt when full-body framing was requested.
+const ETHNICITY_ANCHOR = 'Mongolian ethnicity, East Asian features';
 
 /**
  * If the user's original (Mongolian) prompt mentions both a person and
