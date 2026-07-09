@@ -239,13 +239,28 @@ export function buildFluxInput(
   // runpod-workers/worker-comfyui repo). Applied to every Flux generation at
   // a moderate default strength so it nudges outputs toward Mongolian
   // features/aesthetics without overpowering unrelated prompts.
+  //
+  // Default lowered 0.7 -> 0.35 on 2026-07-09: a user reported that
+  // generations were consistently coming out as tight bust/headshot crops
+  // regardless of the prompt's requested framing (e.g. full-body or wide
+  // shots). Likely cause: the LoRA's training set (Wikimedia Commons photos
+  // of Mongolian people, see task #94/#95) skews heavily toward
+  // portrait/headshot-style photography, a common bias in
+  // encyclopedia/ethnography image collections — so the LoRA learned that
+  // composition bias along with the intended style/features. At high
+  // strength that composition bias overrides the prompt's own framing
+  // instructions. Lowering strength reduces the LoRA's influence on
+  // composition while still nudging style/features toward the trained
+  // aesthetic. If this still isn't enough, the next step would be
+  // retraining on a dataset with more non-portrait (full-body, wide,
+  // candid) photos rather than lowering strength further.
   const FLUX_LORA_NODE_ID = '30'; // LoraLoaderModelOnly
 
   const patched = patchWorkflow(workflow, {
     [FLUX_PROMPT_NODE_ID]: { text: params.prompt },
     [FLUX_SIZE_NODE_ID]: { width: params.width ?? 1024, height: params.height ?? 1024 },
     [FLUX_SEED_NODE_ID]: { noise_seed: params.seed ?? Math.floor(Math.random() * 1_000_000_000_000) },
-    [FLUX_LORA_NODE_ID]: { strength_model: params.loraStrength ?? 0.7 },
+    [FLUX_LORA_NODE_ID]: { strength_model: params.loraStrength ?? 0.35 },
   });
 
   return { workflow: patched };
