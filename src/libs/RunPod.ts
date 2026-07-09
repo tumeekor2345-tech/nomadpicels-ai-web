@@ -225,42 +225,31 @@ export function patchWorkflow(
  */
 export function buildFluxInput(
   workflow: ComfyUIWorkflow,
-  params: { prompt: string; width?: number; height?: number; seed?: number; loraStrength?: number },
+  params: { prompt: string; width?: number; height?: number; seed?: number },
 ) {
   const FLUX_PROMPT_NODE_ID = '6'; // CLIPTextEncode (prompt)
   const FLUX_SIZE_NODE_ID = '5'; // EmptyLatentImage
   const FLUX_SEED_NODE_ID = '25'; // RandomNoise
-  // Node "30" — LoraLoaderModelOnly, wired in between UNETLoader ("12") and
-  // the sampler nodes ("17"/"22"). Loads our custom-trained Mongolian-style
-  // LoRA (mnppl_mongolian_lora_v1.safetensors) from the RunPod Network
-  // Volume attached to this endpoint (mounted at /runpod-volume by
-  // worker-comfyui, models expected under /runpod-volume/models/loras/ —
-  // see src/libs/workflows/README.md and docs/network-volumes.md in the
-  // runpod-workers/worker-comfyui repo). Applied to every Flux generation at
-  // a moderate default strength so it nudges outputs toward Mongolian
-  // features/aesthetics without overpowering unrelated prompts.
-  //
-  // Default lowered 0.7 -> 0.35 on 2026-07-09: a user reported that
-  // generations were consistently coming out as tight bust/headshot crops
-  // regardless of the prompt's requested framing (e.g. full-body or wide
-  // shots). Likely cause: the LoRA's training set (Wikimedia Commons photos
-  // of Mongolian people, see task #94/#95) skews heavily toward
-  // portrait/headshot-style photography, a common bias in
-  // encyclopedia/ethnography image collections — so the LoRA learned that
-  // composition bias along with the intended style/features. At high
-  // strength that composition bias overrides the prompt's own framing
-  // instructions. Lowering strength reduces the LoRA's influence on
-  // composition while still nudging style/features toward the trained
-  // aesthetic. If this still isn't enough, the next step would be
-  // retraining on a dataset with more non-portrait (full-body, wide,
-  // candid) photos rather than lowering strength further.
-  const FLUX_LORA_NODE_ID = '30'; // LoraLoaderModelOnly
 
+  // NOTE: this workflow previously ran every generation through a
+  // custom-trained Mongolian-style LoRA (LoraLoaderModelOnly node "30",
+  // mnppl_mongolian_lora_v1.safetensors). Removed 2026-07-09 at the user's
+  // request: even after lowering strength (0.7 -> 0.35) the LoRA's training
+  // set (Wikimedia Commons portraits/headshots) kept biasing every
+  // generation toward tight bust-crop framing regardless of the prompt's
+  // requested composition, and building a better-balanced replacement
+  // dataset was deprioritized. UNETLoader ("12") now feeds the sampler
+  // nodes directly. Mongolian ethnicity/features are still steered via
+  // plain-text prompt reinforcement — see
+  // src/libs/EthnicityReinforcement.ts — which is unaffected by this
+  // change. If a better-trained LoRA is built later, re-add a
+  // LoraLoaderModelOnly node between "12" and "17"/"22" in
+  // src/libs/workflows/flux-schnell-txt2img.json and patch its
+  // strength_model here the same way.
   const patched = patchWorkflow(workflow, {
     [FLUX_PROMPT_NODE_ID]: { text: params.prompt },
     [FLUX_SIZE_NODE_ID]: { width: params.width ?? 1024, height: params.height ?? 1024 },
     [FLUX_SEED_NODE_ID]: { noise_seed: params.seed ?? Math.floor(Math.random() * 1_000_000_000_000) },
-    [FLUX_LORA_NODE_ID]: { strength_model: params.loraStrength ?? 0.35 },
   });
 
   return { workflow: patched };
@@ -315,28 +304,24 @@ export function buildWanInput(params: {
  */
 export function buildFluxImg2ImgInput(
   workflow: ComfyUIWorkflow,
-  params: { prompt: string; imageBase64: string; denoise?: number; seed?: number; loraStrength?: number },
+  params: { prompt: string; imageBase64: string; denoise?: number; seed?: number },
 ) {
   const FLUX_PROMPT_NODE_ID = '6'; // CLIPTextEncode (prompt)
   const FLUX_SEED_NODE_ID = '25'; // RandomNoise
   const FLUX_DENOISE_NODE_ID = '17'; // BasicScheduler
   const FLUX_LOAD_IMAGE_NODE_ID = '30'; // LoadImage (added for img2img)
-  // Node "32" — LoraLoaderModelOnly (mnppl Mongolian-style LoRA), same idea
-  // as buildFluxInput()'s node "30" above but a different id here since "30"
-  // is already used by this workflow's LoadImage node. Defaults to a lower
-  // strength than txt2img: this graph is shared by Photo Restore (where we
-  // want to preserve the original person's likeness, not restyle it) as well
-  // as Image Effect / AI-Image-reference, so a heavy-handed default would
-  // fight the "keep composition/people unchanged" instruction.
-  const FLUX_LORA_NODE_ID = '32'; // LoraLoaderModelOnly
   const imageName = 'input.png';
 
+  // NOTE: this workflow previously ran through a LoraLoaderModelOnly node
+  // ("32", mnppl Mongolian-style LoRA) between UNETLoader ("12") and the
+  // sampler nodes. Removed 2026-07-09 along with buildFluxInput()'s LoRA
+  // node — see the comment there for why. UNETLoader ("12") now feeds the
+  // sampler nodes directly.
   const patched = patchWorkflow(workflow, {
     [FLUX_PROMPT_NODE_ID]: { text: params.prompt },
     [FLUX_SEED_NODE_ID]: { noise_seed: params.seed ?? Math.floor(Math.random() * 1_000_000_000_000) },
     [FLUX_DENOISE_NODE_ID]: { denoise: params.denoise ?? 0.55 },
     [FLUX_LOAD_IMAGE_NODE_ID]: { image: imageName },
-    [FLUX_LORA_NODE_ID]: { strength_model: params.loraStrength ?? 0.4 },
   });
 
   return {
