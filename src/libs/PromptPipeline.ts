@@ -1,5 +1,4 @@
 import { reinforceFullBodyFraming } from '@/libs/CompositionReinforcement';
-import { reinforceEthnicity } from '@/libs/EthnicityReinforcement';
 import { translateMongolianToEnglish } from '@/libs/Translate';
 
 /**
@@ -15,11 +14,19 @@ import { translateMongolianToEnglish } from '@/libs/Translate';
  *
  *   1. TRANSLATE  — src/libs/Translate.ts: Mongolian -> English (Claude
  *      Haiku, falls back to MyMemory). No-op if the text has no Cyrillic.
- *   2. REINFORCE  — src/libs/EthnicityReinforcement.ts +
- *      src/libs/CompositionReinforcement.ts: adds the ethnicity anchor and,
- *      if full-body framing was requested, the framing anchor. Both keyed off
- *      the ORIGINAL (pre-translation) prompt so the Mongolian keyword checks
- *      still work.
+ *   2. REINFORCE  — src/libs/CompositionReinforcement.ts: if full-body
+ *      framing was requested, adds the framing anchor, keyed off the
+ *      ORIGINAL (pre-translation) prompt so the Mongolian keyword check
+ *      still works.
+ *
+ *      Was also calling src/libs/EthnicityReinforcement.ts here (prepending
+ *      "Mongolian ethnicity, East Asian features") — removed 2026-07-09 at
+ *      the user's explicit request, same day it was added. That module is
+ *      left in the codebase, unused, in case ethnicity adherence turns out
+ *      to need revisiting later (Flux schnell's documented bias toward
+ *      generic/Western-leaning faces without an explicit anchor — see that
+ *      file's own comment — doesn't go away just because we stopped
+ *      fighting it here).
  *   3. PREVIEW / EDIT — this function's result is what
  *      src/app/api/generate/preview-prompt/route.ts returns, which
  *      GenerateForm.tsx shows in an editable "Эцсийн Prompt" box. If the user
@@ -32,7 +39,6 @@ import { translateMongolianToEnglish } from '@/libs/Translate';
  */
 export async function buildFinalModelPrompt(originalPrompt: string): Promise<string> {
   const translated = await translateMongolianToEnglish(originalPrompt);
-  const withEthnicity = reinforceEthnicity(originalPrompt, translated);
-  const final = reinforceFullBodyFraming(originalPrompt, withEthnicity);
+  const final = reinforceFullBodyFraming(originalPrompt, translated);
   return final;
 }
