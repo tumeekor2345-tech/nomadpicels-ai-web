@@ -10,14 +10,22 @@
  * server-side, right before it's sent to RunPod, so users can type prompts
  * in Mongolian naturally.
  *
- * Uses MyMemory's free public translation API (no API key / account setup
- * required — https://mymemory.translated.net). Its free tier is capped at
- * roughly 5,000 words/day per calling IP; if that's exceeded, or the API is
- * slow/unreachable for any reason, this falls back to the original text
- * rather than blocking generation. If usage grows past this free tier, swap
- * this module's implementation for a paid provider (Google Cloud
- * Translation, DeepL, etc.) — the containsCyrillic()/translateMongolianToEnglish()
- * call sites elsewhere in the codebase won't need to change.
+ * MN->EN translation is done via Claude Haiku first (see
+ * claudeTranslateMongolianToEnglish() below), falling back to MyMemory's
+ * free public translation API if Claude is unavailable/fails. This two-tier
+ * setup exists because MyMemory was found (live, 2026-07-09) to badly
+ * mistranslate Mongolian cultural/clothing vocabulary — e.g. "Монгол дээл"
+ * ("Mongolian deel", the traditional robe) came back as "Mongolyn
+ * Monastery", and "Монгол дээлтэй эмэгтэйийн зураг" came back as "Mongolian
+ * Embroidery Thread". Since "дээл" never survived translation, Flux never
+ * saw the word "deel" at all and generated generic/unrelated
+ * fur-coat-and-brocade imagery instead of an actual deel — this was reported
+ * by a user testing the new Mongolian-style LoRA and traced here by directly
+ * querying the MyMemory API. Claude Haiku (already used by
+ * src/libs/PromptEnhance.ts, so ANTHROPIC_API_KEY is already configured)
+ * translates such terms correctly and is tried first; MyMemory remains as a
+ * free fallback if the Anthropic API key is missing or the call fails, so
+ * translation — and therefore generation — never hard-fails.
  */
 
 // Mongolian Cyrillic uses the standard Cyrillic block plus a couple of
@@ -58,16 +66,83 @@ async function myMemoryTranslate(text: string, langpair: string): Promise<string
   }
 }
 
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+const CLAUDE_TRANSLATE_TIMEOUT_MS = 8000;
+
+const CLAUDE_TRANSLATE_SYSTEM_PROMPT = [
+  'Translate the given Mongolian (Cyrillic) text to English.',
+  'This text is a prompt for an AI image/video generator, so accuracy on concrete visual and cultural terms matters a lot more than fluency — a wrong translation of a clothing or object name will make the generator draw the wrong thing entirely.',
+  'In particular: "дээл" always means "deel" (the traditional Mongolian robe/coat with a diagonal front closure and sash belt) — never "monastery", "embroidery", or anything else. Translate other specific Mongolian cultural terms (e.g. clothing, food, objects, places) as precisely and concretely as you can, keeping well-known loanwords like "deel" untranslated if that is the accurate/standard English term.',
+  'Respond with ONLY the English translation — no preamble, no quotation marks, no explanation.',
+].join(' ');
+
+/**
+ * Translates `text` from Mongolian to English via Claude Haiku. Returns null
+ * (never throws) if ANTHROPIC_API_KEY is missing, the request fails, times
+ * out, or returns something unusable — callers should fall back to
+ * myMemoryTranslate() in that case.
+ */
+async function claudeTranslateMongolianToEnglish(text: string): Promise<string | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), CLAUDE_TRANSLATE_TIMEOUT_MS);
+
+    const res = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 300,
+        system: CLAUDE_TRANSLATE_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: text }],
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const data = await res.json();
+    const translated = data?.content?.[0]?.text;
+
+    if (typeof translated === 'string' && translated.trim().length > 0) {
+      return translated.trim();
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Translates `text` from Mongolian to English if it contains any Cyrillic
  * characters; otherwise returns it unchanged (already-English prompts skip
- * the network call entirely). Never throws — any failure (timeout, network
- * error, quota exceeded, malformed response) silently falls back to the
- * original text so a translation hiccup never blocks a generation.
+ * translation entirely). Tries Claude Haiku first (accurate on Mongolian
+ * cultural/clothing terms — see module comment above), falls back to
+ * MyMemory, and falls back to the original text if both fail. Never throws —
+ * a translation hiccup never blocks a generation.
  */
 export async function translateMongolianToEnglish(text: string): Promise<string> {
   if (!containsCyrillic(text)) {
     return text;
+  }
+
+  const claudeResult = await claudeTranslateMongolianToEnglish(text);
+  if (claudeResult) {
+    return claudeResult;
   }
 
   const translated = await myMemoryTranslate(text, 'mn|en');
