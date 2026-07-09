@@ -8,6 +8,13 @@ import { isPromptBlocked } from '@/libs/ContentModeration';
 import { db } from '@/libs/DB';
 import { reinforceEthnicity } from '@/libs/EthnicityReinforcement';
 import { DEFAULT_FACE_SWAP_STYLE, FACE_SWAP_STYLE_PROMPTS, isFaceSwapStyleId } from '@/libs/FaceSwapStyles';
+import {
+  buildImageEffectPrompt,
+  CAMERA_ANGLE_PRESETS,
+  COLOR_PALETTE_PRESETS,
+  EFFECT_PRESETS,
+  STYLE_PRESETS,
+} from '@/libs/ImagePresets';
 import { CREDIT_COST } from '@/libs/Pricing';
 import {
   buildFaceSwapInput,
@@ -130,7 +137,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
-  const VALID_KINDS = ['flux', 'wan', 'photo_restore', 'face_swap'];
+  const VALID_KINDS = ['flux', 'wan', 'photo_restore', 'face_swap', 'image_effect'];
 
   if (!body || !VALID_KINDS.includes(body.kind)) {
     return NextResponse.json(
@@ -179,7 +186,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const needsImageUrl = body.kind === 'wan' || body.kind === 'photo_restore' || body.kind === 'face_swap';
+  const needsImageUrl = body.kind === 'wan' || body.kind === 'photo_restore' || body.kind === 'face_swap' || body.kind === 'image_effect';
   if (needsImageUrl && (!body.imageUrl || typeof body.imageUrl !== 'string')) {
     return NextResponse.json(
       { error: 'imageUrl is required.' },
@@ -209,8 +216,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const img2imgWorkflow = (body.kind === 'photo_restore' || usingFluxReference) ? loadFluxImg2ImgWorkflow() : null;
-  if ((body.kind === 'photo_restore' || usingFluxReference) && !img2imgWorkflow) {
+  const needsImg2ImgWorkflow = body.kind === 'photo_restore' || body.kind === 'image_effect' || usingFluxReference;
+  const img2imgWorkflow = needsImg2ImgWorkflow ? loadFluxImg2ImgWorkflow() : null;
+  if (needsImg2ImgWorkflow && !img2imgWorkflow) {
     return NextResponse.json(
       {
         error: 'img2img_workflow_not_configured',
@@ -315,6 +323,39 @@ export async function POST(request: Request) {
       }).returning({ id: generationSchema.id });
 
       return NextResponse.json({ kind: 'photo_restore', jobId: job.id, status: job.status, generationId: row?.id });
+    }
+
+    if (body.kind === 'image_effect') {
+      // "Prompt-free" like Photo Restore / Face Swap — the client only ever
+      // sends preset ids (validated against the known preset lists below),
+      // never raw prompt text, so isPromptBlocked() doesn't need to run here.
+      const styleId = STYLE_PRESETS.some(s => s.id === body.styleId) ? body.styleId : 'none';
+      const colorPaletteId = COLOR_PALETTE_PRESETS.some(p => p.id === body.colorPaletteId) ? body.colorPaletteId : 'none';
+      const effectId = EFFECT_PRESETS.some(e => e.id === body.effectId) ? body.effectId : 'none';
+      const cameraAngleId = CAMERA_ANGLE_PRESETS.some(a => a.id === body.cameraAngleId) ? body.cameraAngleId : 'none';
+      const imageEffectPrompt = buildImageEffectPrompt({ styleId, colorPaletteId, effectId, cameraAngleId });
+
+      const imageBase64 = await fetchImageAsBase64(body.imageUrl);
+      const input = buildFluxImg2ImgInput(img2imgWorkflow!, {
+        prompt: imageEffectPrompt,
+        imageBase64,
+        denoise: typeof body.denoise === 'number' ? body.denoise : 0.55,
+      });
+
+      // Runs on the same RunPod endpoint as regular Flux — only the
+      // workflow graph sent in the request differs.
+      const job = await submitRunPodJob('flux', input);
+
+      const [row] = await db.insert(generationSchema).values({
+        ownerId: userId,
+        orgId: orgId ?? null,
+        kind: 'image_effect',
+        prompt: imageEffectPrompt,
+        jobId: job.id,
+        status: job.status,
+      }).returning({ id: generationSchema.id });
+
+      return NextResponse.json({ kind: 'image_effect', jobId: job.id, status: job.status, generationId: row?.id });
     }
 
     // kind === 'face_swap'

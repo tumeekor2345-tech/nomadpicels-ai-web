@@ -225,16 +225,27 @@ export function patchWorkflow(
  */
 export function buildFluxInput(
   workflow: ComfyUIWorkflow,
-  params: { prompt: string; width?: number; height?: number; seed?: number },
+  params: { prompt: string; width?: number; height?: number; seed?: number; loraStrength?: number },
 ) {
   const FLUX_PROMPT_NODE_ID = '6'; // CLIPTextEncode (prompt)
   const FLUX_SIZE_NODE_ID = '5'; // EmptyLatentImage
   const FLUX_SEED_NODE_ID = '25'; // RandomNoise
+  // Node "30" — LoraLoaderModelOnly, wired in between UNETLoader ("12") and
+  // the sampler nodes ("17"/"22"). Loads our custom-trained Mongolian-style
+  // LoRA (mnppl_mongolian_lora_v1.safetensors) from the RunPod Network
+  // Volume attached to this endpoint (mounted at /runpod-volume by
+  // worker-comfyui, models expected under /runpod-volume/models/loras/ —
+  // see src/libs/workflows/README.md and docs/network-volumes.md in the
+  // runpod-workers/worker-comfyui repo). Applied to every Flux generation at
+  // a moderate default strength so it nudges outputs toward Mongolian
+  // features/aesthetics without overpowering unrelated prompts.
+  const FLUX_LORA_NODE_ID = '30'; // LoraLoaderModelOnly
 
   const patched = patchWorkflow(workflow, {
     [FLUX_PROMPT_NODE_ID]: { text: params.prompt },
     [FLUX_SIZE_NODE_ID]: { width: params.width ?? 1024, height: params.height ?? 1024 },
     [FLUX_SEED_NODE_ID]: { noise_seed: params.seed ?? Math.floor(Math.random() * 1_000_000_000_000) },
+    [FLUX_LORA_NODE_ID]: { strength_model: params.loraStrength ?? 0.7 },
   });
 
   return { workflow: patched };
@@ -289,12 +300,20 @@ export function buildWanInput(params: {
  */
 export function buildFluxImg2ImgInput(
   workflow: ComfyUIWorkflow,
-  params: { prompt: string; imageBase64: string; denoise?: number; seed?: number },
+  params: { prompt: string; imageBase64: string; denoise?: number; seed?: number; loraStrength?: number },
 ) {
   const FLUX_PROMPT_NODE_ID = '6'; // CLIPTextEncode (prompt)
   const FLUX_SEED_NODE_ID = '25'; // RandomNoise
   const FLUX_DENOISE_NODE_ID = '17'; // BasicScheduler
   const FLUX_LOAD_IMAGE_NODE_ID = '30'; // LoadImage (added for img2img)
+  // Node "32" — LoraLoaderModelOnly (mnppl Mongolian-style LoRA), same idea
+  // as buildFluxInput()'s node "30" above but a different id here since "30"
+  // is already used by this workflow's LoadImage node. Defaults to a lower
+  // strength than txt2img: this graph is shared by Photo Restore (where we
+  // want to preserve the original person's likeness, not restyle it) as well
+  // as Image Effect / AI-Image-reference, so a heavy-handed default would
+  // fight the "keep composition/people unchanged" instruction.
+  const FLUX_LORA_NODE_ID = '32'; // LoraLoaderModelOnly
   const imageName = 'input.png';
 
   const patched = patchWorkflow(workflow, {
@@ -302,6 +321,7 @@ export function buildFluxImg2ImgInput(
     [FLUX_SEED_NODE_ID]: { noise_seed: params.seed ?? Math.floor(Math.random() * 1_000_000_000_000) },
     [FLUX_DENOISE_NODE_ID]: { denoise: params.denoise ?? 0.55 },
     [FLUX_LOAD_IMAGE_NODE_ID]: { image: imageName },
+    [FLUX_LORA_NODE_ID]: { strength_model: params.loraStrength ?? 0.4 },
   });
 
   return {

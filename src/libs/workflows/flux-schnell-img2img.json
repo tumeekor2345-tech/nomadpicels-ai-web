@@ -86,7 +86,7 @@
       "scheduler": "sgm_uniform",
       "steps": 8,
       "denoise": 0.55,
-      "model": ["12", 0]
+      "model": ["32", 0]
     },
     "class_type": "BasicScheduler",
     "_meta": {
@@ -95,7 +95,7 @@
   },
   "22": {
     "inputs": {
-      "model": ["12", 0],
+      "model": ["32", 0],
       "conditioning": ["6", 0]
     },
     "class_type": "BasicGuider",
@@ -129,6 +129,17 @@
     "class_type": "VAEEncode",
     "_meta": {
       "title": "VAE Encode (img2img)"
+    }
+  },
+  "32": {
+    "inputs": {
+      "model": ["12", 0],
+      "lora_name": "mnppl_mongolian_lora_v1.safetensors",
+      "strength_model": 0.4
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly (mnppl Mongolian style)"
     }
   }
 }

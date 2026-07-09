@@ -5,7 +5,7 @@ import { db } from '@/libs/DB';
 import { generationSchema } from '@/models/Schema';
 
 const HISTORY_LIMIT = 20;
-const VALID_KINDS = new Set(['flux', 'wan', 'photo_restore', 'face_swap']);
+const VALID_KINDS = new Set(['flux', 'wan', 'photo_restore', 'face_swap', 'image_effect']);
 
 /**
  * Lists the current user's past generations (newest first), for the

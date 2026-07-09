@@ -97,7 +97,7 @@
       "scheduler": "sgm_uniform",
       "steps": 8,
       "denoise": 1,
-      "model": ["12", 0]
+      "model": ["30", 0]
     },
     "class_type": "BasicScheduler",
     "_meta": {
@@ -106,7 +106,7 @@
   },
   "22": {
     "inputs": {
-      "model": ["12", 0],
+      "model": ["30", 0],
       "conditioning": ["6", 0]
     },
     "class_type": "BasicGuider",
@@ -121,6 +121,17 @@
     "class_type": "RandomNoise",
     "_meta": {
       "title": "RandomNoise"
+    }
+  },
+  "30": {
+    "inputs": {
+      "model": ["12", 0],
+      "lora_name": "mnppl_mongolian_lora_v1.safetensors",
+      "strength_model": 0.7
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly (mnppl Mongolian style)"
     }
   }
 }

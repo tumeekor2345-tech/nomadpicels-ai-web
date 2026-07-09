@@ -17,7 +17,7 @@ type HistoryItem = {
  * completes, so the strip re-fetches and shows the new item.
  */
 export const HistoryStrip = (props: {
-  kind: 'photo_restore' | 'face_swap';
+  kind: 'photo_restore' | 'face_swap' | 'image_effect';
   title: string;
   emptyLabel: string;
   refreshKey: number;

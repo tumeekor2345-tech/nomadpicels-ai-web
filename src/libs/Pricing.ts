@@ -71,4 +71,5 @@ export const CREDIT_COST = {
   wan: 8,
   photo_restore: 2,
   face_swap: 3,
+  image_effect: 2,
 } as const;

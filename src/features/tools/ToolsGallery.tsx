@@ -1,4 +1,4 @@
-import { ImageIcon, Mic, Repeat } from 'lucide-react';
+import { ImageIcon, Mic, Repeat, Wand2 } from 'lucide-react';
 import { Link } from '@/libs/I18nNavigation';
 
 type GalleryLabels = {
@@ -6,6 +6,8 @@ type GalleryLabels = {
   restoreDescription: string;
   faceSwapTitle: string;
   faceSwapDescription: string;
+  imageEffectTitle: string;
+  imageEffectDescription: string;
   voiceTitle: string;
   voiceDescription: string;
   open: string;
@@ -19,7 +21,8 @@ export const ToolsGallery = (props: { labels: GalleryLabels }) => {
   return (
     <div className="
       grid grid-cols-1 gap-4
-      sm:grid-cols-3
+      sm:grid-cols-2
+      lg:grid-cols-4
     "
     >
       <Link href="/dashboard/tools/photo-restore" className={cardBase}>
@@ -36,6 +39,15 @@ export const ToolsGallery = (props: { labels: GalleryLabels }) => {
         <div>
           <div className="text-lg font-semibold">{labels.faceSwapTitle}</div>
           <div className="mt-1 text-sm text-muted-foreground">{labels.faceSwapDescription}</div>
+        </div>
+        <div className="mt-auto text-sm font-medium text-primary">{labels.open}</div>
+      </Link>
+
+      <Link href="/dashboard/tools/image-effect" className={cardBase}>
+        <Wand2 className="size-6 text-primary" />
+        <div>
+          <div className="text-lg font-semibold">{labels.imageEffectTitle}</div>
+          <div className="mt-1 text-sm text-muted-foreground">{labels.imageEffectDescription}</div>
         </div>
         <div className="mt-auto text-sm font-medium text-primary">{labels.open}</div>
       </Link>

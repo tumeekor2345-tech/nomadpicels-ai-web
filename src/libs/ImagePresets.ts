@@ -92,3 +92,105 @@ export function buildFinalPrompt(basePrompt: string, styleId: StyleId, lensId: L
   }
   return fragments.filter(Boolean).join(', ');
 }
+
+/**
+ * Presets for the "Image Effect" tool (Tools > Image Effect) — a one-click
+ * img2img restyle of a user-uploaded photo, modeled on the
+ * style/color-palette/effect/camera-angle picker pattern used by tools like
+ * imagine.art. Reuses STYLE_PRESETS above for the "style" dropdown; these
+ * three cover the remaining categories.
+ */
+
+export type ColorPaletteId
+  = | 'none'
+    | 'warm'
+    | 'cool'
+    | 'vibrant'
+    | 'pastel'
+    | 'blackAndWhite'
+    | 'sepia'
+    | 'highContrast';
+
+export const COLOR_PALETTE_PRESETS: Array<{ id: ColorPaletteId; promptFragment: string }> = [
+  { id: 'none', promptFragment: '' },
+  { id: 'warm', promptFragment: 'warm color palette, golden tones' },
+  { id: 'cool', promptFragment: 'cool color palette, blue and teal tones' },
+  { id: 'vibrant', promptFragment: 'vibrant, highly saturated colors' },
+  { id: 'pastel', promptFragment: 'soft pastel color palette, muted tones' },
+  { id: 'blackAndWhite', promptFragment: 'black and white, monochrome' },
+  { id: 'sepia', promptFragment: 'sepia tone, vintage brown tint' },
+  { id: 'highContrast', promptFragment: 'high contrast, deep shadows and bright highlights' },
+];
+
+export type EffectId
+  = | 'none'
+    | 'filmGrain'
+    | 'glow'
+    | 'hdr'
+    | 'bokeh'
+    | 'moody'
+    | 'sharp';
+
+export const EFFECT_PRESETS: Array<{ id: EffectId; promptFragment: string }> = [
+  { id: 'none', promptFragment: '' },
+  { id: 'filmGrain', promptFragment: 'subtle film grain texture' },
+  { id: 'glow', promptFragment: 'soft dreamy glow, gentle bloom' },
+  { id: 'hdr', promptFragment: 'HDR look, enhanced dynamic range and detail' },
+  { id: 'bokeh', promptFragment: 'blurred bokeh background' },
+  { id: 'moody', promptFragment: 'moody atmospheric lighting' },
+  { id: 'sharp', promptFragment: 'crisp sharp focus, ultra detailed' },
+];
+
+export type CameraAngleId
+  = | 'none'
+    | 'eyeLevel'
+    | 'lowAngle'
+    | 'highAngle'
+    | 'birdsEye'
+    | 'closeUp'
+    | 'wideShot';
+
+export const CAMERA_ANGLE_PRESETS: Array<{ id: CameraAngleId; promptFragment: string }> = [
+  { id: 'none', promptFragment: '' },
+  { id: 'eyeLevel', promptFragment: 'eye-level shot' },
+  { id: 'lowAngle', promptFragment: 'low-angle shot, looking up, heroic perspective' },
+  { id: 'highAngle', promptFragment: 'high-angle shot, looking down' },
+  { id: 'birdsEye', promptFragment: 'bird\'s-eye view, top-down perspective' },
+  { id: 'closeUp', promptFragment: 'close-up shot' },
+  { id: 'wideShot', promptFragment: 'wide shot, full scene visible' },
+];
+
+/**
+ * Fixed base instruction plus whichever style/color-palette/effect/camera
+ * fragments the user picked. Like Photo Restore and Face Swap, this is a
+ * "prompt-free" tool — the client only ever sends preset ids, never raw
+ * prompt text, so there's nothing here for isPromptBlocked() to need to
+ * check.
+ */
+export function buildImageEffectPrompt(params: {
+  styleId: StyleId;
+  colorPaletteId: ColorPaletteId;
+  effectId: EffectId;
+  cameraAngleId: CameraAngleId;
+}): string {
+  const fragments = ['enhance this photo, keep the subject and composition recognizable'];
+  const style = STYLE_PRESETS.find(s => s.id === params.styleId);
+  const palette = COLOR_PALETTE_PRESETS.find(p => p.id === params.colorPaletteId);
+  const effect = EFFECT_PRESETS.find(e => e.id === params.effectId);
+  const angle = CAMERA_ANGLE_PRESETS.find(a => a.id === params.cameraAngleId);
+
+  if (style?.promptFragment) {
+    fragments.push(style.promptFragment);
+  }
+  if (palette?.promptFragment) {
+    fragments.push(palette.promptFragment);
+  }
+  if (effect?.promptFragment) {
+    fragments.push(effect.promptFragment);
+  }
+  if (angle?.promptFragment) {
+    fragments.push(angle.promptFragment);
+  }
+
+  return fragments.filter(Boolean).join(', ');
+}

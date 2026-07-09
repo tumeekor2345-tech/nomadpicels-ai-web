@@ -25,6 +25,8 @@ export default async function ToolsPage(props: {
           restoreDescription: t('restore_description'),
           faceSwapTitle: t('face_swap_title'),
           faceSwapDescription: t('face_swap_description'),
+          imageEffectTitle: t('image_effect_title'),
+          imageEffectDescription: t('image_effect_description'),
           voiceTitle: t('voice_title'),
           voiceDescription: t('voice_description'),
           open: t('open'),
