@@ -149,16 +149,81 @@ export async function translateMongolianToEnglish(text: string): Promise<string>
   return translated ?? text;
 }
 
+const CLAUDE_TRANSLATE_EN_MN_SYSTEM_PROMPT = [
+  'Translate the given English text to Mongolian (Cyrillic script).',
+  'This text is an AI image/video generation prompt being shown to a Mongolian user for review/editing, so it must read as natural, fluent Mongolian — not a stiff or garbled word-for-word translation.',
+  'Respond with ONLY the Mongolian translation — no preamble, no quotation marks, no explanation, no English text.',
+].join(' ');
+
+/**
+ * Translates `text` from English to Mongolian via Claude Haiku. Returns null
+ * (never throws) if ANTHROPIC_API_KEY is missing, the request fails, times
+ * out, or returns something unusable — callers should fall back to
+ * myMemoryTranslate() in that case.
+ */
+async function claudeTranslateEnglishToMongolian(text: string): Promise<string | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), CLAUDE_TRANSLATE_TIMEOUT_MS);
+
+    const res = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 300,
+        system: CLAUDE_TRANSLATE_EN_MN_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: text }],
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const data = await res.json();
+    const translated = data?.content?.[0]?.text;
+
+    if (typeof translated === 'string' && translated.trim().length > 0) {
+      return translated.trim();
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Translates `text` from English to Mongolian. Used by the prompt enhancer
  * (src/libs/PromptEnhance.ts) to give the user a readable, editable
  * Mongolian preview of Claude's English-language enhanced description — see
  * that module for why the enhancement itself is generated in English rather
- * than Mongolian. Never throws — any failure falls back to the original
- * (English) text, so a translation hiccup just means the preview box shows
- * English instead of Mongolian rather than breaking anything.
+ * than Mongolian (free-form Mongolian *writing* was unreliable; translating
+ * already-written English is a much more constrained task and doesn't
+ * exhibit the same failure mode). Tries Claude Haiku first for the same
+ * accuracy reasons as translateMongolianToEnglish() above, falls back to
+ * MyMemory, and falls back to the original English text if both fail — a
+ * translation hiccup just means the preview box shows English instead of
+ * Mongolian rather than breaking anything. Never throws.
  */
 export async function translateEnglishToMongolian(text: string): Promise<string> {
+  const claudeResult = await claudeTranslateEnglishToMongolian(text);
+  if (claudeResult) {
+    return claudeResult;
+  }
+
   const translated = await myMemoryTranslate(text, 'en|mn');
   return translated ?? text;
 }
