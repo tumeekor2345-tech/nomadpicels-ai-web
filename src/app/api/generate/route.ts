@@ -6,6 +6,7 @@ import { and, eq, gte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { isPromptBlocked } from '@/libs/ContentModeration';
 import { db } from '@/libs/DB';
+import { reinforceEthnicity } from '@/libs/EthnicityReinforcement';
 import { DEFAULT_FACE_SWAP_STYLE, FACE_SWAP_STYLE_PROMPTS, isFaceSwapStyleId } from '@/libs/FaceSwapStyles';
 import { CREDIT_COST } from '@/libs/Pricing';
 import {
@@ -158,9 +159,18 @@ export async function POST(request: Request) {
   // English server-side before it reaches RunPod, but keep the user's
   // original text for isPromptBlocked() (below) and for what's stored/shown
   // in their generation history. See src/libs/Translate.ts for details.
-  const modelPrompt = needsUserPrompt
+  const translatedPrompt = needsUserPrompt
     ? await translateMongolianToEnglish(body.prompt)
     : body.prompt;
+
+  // Diffusion models (Flux schnell included) default toward generic,
+  // Western-leaning faces unless ethnicity is explicitly and prominently
+  // anchored in the prompt. When the user asked for a Mongolian person,
+  // front-load an explicit anchor phrase so the model actually renders one.
+  // See src/libs/EthnicityReinforcement.ts.
+  const modelPrompt = needsUserPrompt
+    ? reinforceEthnicity(body.prompt, translatedPrompt)
+    : translatedPrompt;
 
   if (needsUserPrompt && modelPrompt !== body.prompt && isPromptBlocked(modelPrompt)) {
     return NextResponse.json(
