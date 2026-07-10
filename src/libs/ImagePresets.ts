@@ -22,7 +22,12 @@ export type StyleId
     | '3d'
     | 'watercolor'
     | 'cyberpunk'
-    | 'fantasy';
+    | 'fantasy'
+    | 'noir'
+    | 'retroPop'
+    | 'darkAcademia'
+    | 'vintagePolaroid'
+    | 'comicBook';
 
 export const STYLE_PRESETS: Array<{ id: StyleId; promptFragment: string }> = [
   { id: 'none', promptFragment: '' },
@@ -34,6 +39,13 @@ export const STYLE_PRESETS: Array<{ id: StyleId; promptFragment: string }> = [
   { id: 'watercolor', promptFragment: 'watercolor painting style, soft brush strokes' },
   { id: 'cyberpunk', promptFragment: 'cyberpunk aesthetic, neon lighting, futuristic' },
   { id: 'fantasy', promptFragment: 'fantasy art style, epic, magical atmosphere' },
+  // Added 2026-07-10: extra style presets inspired by imagine.art's
+  // "Add references > Styles" picker, at the user's request.
+  { id: 'noir', promptFragment: 'noir cinematic style, high-contrast black and white, dramatic hard shadows' },
+  { id: 'retroPop', promptFragment: 'retro pop art style, bold flat colors, halftone dots, comic-style outlines' },
+  { id: 'darkAcademia', promptFragment: 'dark academia aesthetic, moody library tones, vintage scholarly atmosphere' },
+  { id: 'vintagePolaroid', promptFragment: 'vintage polaroid photo style, faded colors, soft focus, white photo border look' },
+  { id: 'comicBook', promptFragment: 'comic book illustration style, bold ink outlines, halftone shading, action panel look' },
 ];
 
 export type LensId
@@ -109,7 +121,11 @@ export type ColorPaletteId
     | 'pastel'
     | 'blackAndWhite'
     | 'sepia'
-    | 'highContrast';
+    | 'highContrast'
+    | 'autumnHarvest'
+    | 'pearlIvory'
+    | 'jungleVivid'
+    | 'sunsetGradient';
 
 export const COLOR_PALETTE_PRESETS: Array<{ id: ColorPaletteId; promptFragment: string }> = [
   { id: 'none', promptFragment: '' },
@@ -120,6 +136,12 @@ export const COLOR_PALETTE_PRESETS: Array<{ id: ColorPaletteId; promptFragment: 
   { id: 'blackAndWhite', promptFragment: 'black and white, monochrome' },
   { id: 'sepia', promptFragment: 'sepia tone, vintage brown tint' },
   { id: 'highContrast', promptFragment: 'high contrast, deep shadows and bright highlights' },
+  // Added 2026-07-10: named palette presets inspired by imagine.art's
+  // "Add references > Color Palette" picker, at the user's request.
+  { id: 'autumnHarvest', promptFragment: 'autumn harvest color palette, burnt orange, deep maroon, golden mustard tones' },
+  { id: 'pearlIvory', promptFragment: 'pearl ivory color palette, soft creams and whites, delicate neutral tones' },
+  { id: 'jungleVivid', promptFragment: 'jungle vivid color palette, saturated greens with orange and yellow accents' },
+  { id: 'sunsetGradient', promptFragment: 'sunset gradient color palette, coral pink fading into golden orange and lavender' },
 ];
 
 export type EffectId
@@ -129,7 +151,11 @@ export type EffectId
     | 'hdr'
     | 'bokeh'
     | 'moody'
-    | 'sharp';
+    | 'sharp'
+    | 'motionBlur'
+    | 'doubleExposure'
+    | 'glitch'
+    | 'lomo';
 
 export const EFFECT_PRESETS: Array<{ id: EffectId; promptFragment: string }> = [
   { id: 'none', promptFragment: '' },
@@ -139,6 +165,12 @@ export const EFFECT_PRESETS: Array<{ id: EffectId; promptFragment: string }> = [
   { id: 'bokeh', promptFragment: 'blurred bokeh background' },
   { id: 'moody', promptFragment: 'moody atmospheric lighting' },
   { id: 'sharp', promptFragment: 'crisp sharp focus, ultra detailed' },
+  // Added 2026-07-10: extra effect presets inspired by imagine.art's
+  // "Add references > Effects" picker, at the user's request.
+  { id: 'motionBlur', promptFragment: 'motion blur effect, sense of speed and movement' },
+  { id: 'doubleExposure', promptFragment: 'double exposure effect, blended overlapping imagery' },
+  { id: 'glitch', promptFragment: 'digital glitch effect, RGB channel split, scan lines' },
+  { id: 'lomo', promptFragment: 'lomography film effect, dark vignette corners, saturated cross-processed colors' },
 ];
 
 export type CameraAngleId
@@ -148,7 +180,11 @@ export type CameraAngleId
     | 'highAngle'
     | 'birdsEye'
     | 'closeUp'
-    | 'wideShot';
+    | 'wideShot'
+    | 'portraitFraming'
+    | 'aerialView'
+    | 'groundView'
+    | 'tiltShot';
 
 export const CAMERA_ANGLE_PRESETS: Array<{ id: CameraAngleId; promptFragment: string }> = [
   { id: 'none', promptFragment: '' },
@@ -158,6 +194,12 @@ export const CAMERA_ANGLE_PRESETS: Array<{ id: CameraAngleId; promptFragment: st
   { id: 'birdsEye', promptFragment: 'bird\'s-eye view, top-down perspective' },
   { id: 'closeUp', promptFragment: 'close-up shot' },
   { id: 'wideShot', promptFragment: 'wide shot, full scene visible' },
+  // Added 2026-07-10: extra camera angle presets inspired by imagine.art's
+  // "Add references > Camera Angles" picker, at the user's request.
+  { id: 'portraitFraming', promptFragment: 'tight portrait framing, subject centered, shallow depth of field' },
+  { id: 'aerialView', promptFragment: 'aerial drone view, looking straight down from above' },
+  { id: 'groundView', promptFragment: 'ground-level view, camera placed low near the ground looking up' },
+  { id: 'tiltShot', promptFragment: 'tilted dutch angle shot, dynamic diagonal framing' },
 ];
 
 /**

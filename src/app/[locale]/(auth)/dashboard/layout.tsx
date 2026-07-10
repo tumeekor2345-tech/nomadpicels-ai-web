@@ -48,6 +48,7 @@ export default async function DashboardLayout(props: DashboardLayoutProps) {
       label: t('section_tools'),
       items: [
         { href: '/dashboard/tools/photo-restore', label: t('tools_restore'), icon: 'restore' as const },
+        { href: '/dashboard/tools/image-effect', label: t('tools_image_effect'), icon: 'imageeffect' as const },
         { href: '/dashboard/tools/face-swap', label: t('tools_face_swap'), icon: 'faceswap' as const },
         { href: '/dashboard/tools/voice-changer', label: t('tools_voice'), icon: 'voice' as const },
       ],
