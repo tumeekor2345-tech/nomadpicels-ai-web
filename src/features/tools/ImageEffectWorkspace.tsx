@@ -16,6 +16,7 @@ import {
   EFFECT_PRESETS,
   STYLE_PRESETS,
 } from '@/libs/ImagePresets';
+import { COLOR_PALETTE_FILTERS, STYLE_FILTERS } from '@/libs/ColorFilters';
 import {
   CAMERA_ANGLE_VISUALS,
   COLOR_PALETTE_VISUALS,
@@ -74,6 +75,35 @@ function resizeImageFileToDataUrl(file: File): Promise<string> {
     };
     reader.onerror = () => reject(new Error('file read failed'));
     reader.readAsDataURL(file);
+  });
+}
+
+// Applies a deterministic CSS color-grade filter to the AI output — see
+// src/libs/ColorFilters.ts for why this exists (the model doesn't always
+// fully honor a plain-text color instruction like "black and white" on its
+// own, especially at low/medium denoise, so this is a guarantee layered on
+// top of the prompt hint rather than a replacement for it).
+function applyColorFilter(pngDataUrl: string, filter: string): Promise<string> {
+  if (!filter) {
+    return Promise.resolve(pngDataUrl);
+  }
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(pngDataUrl);
+        return;
+      }
+      ctx.filter = filter;
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(pngDataUrl);
+    img.src = pngDataUrl;
   });
 }
 
@@ -155,7 +185,11 @@ export const ImageEffectWorkspace = (props: { labels: Labels }) => {
       setStatusText(null);
       if (data.output?.images?.[0]) {
         const image = data.output.images[0];
-        setResultSrc(image.type === 'base64' ? `data:image/png;base64,${image.data}` : image.data);
+        const rawSrc = image.type === 'base64' ? `data:image/png;base64,${image.data}` : image.data;
+        const filter = [STYLE_FILTERS[styleId], COLOR_PALETTE_FILTERS[colorPaletteId]]
+          .filter(Boolean)
+          .join(' ');
+        applyColorFilter(rawSrc, filter).then(setResultSrc);
       } else {
         setErrorText(labels.failed);
       }
