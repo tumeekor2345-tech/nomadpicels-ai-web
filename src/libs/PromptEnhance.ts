@@ -35,19 +35,46 @@ const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 const ENHANCE_TIMEOUT_MS = 15000;
 const REFUSAL_MARKER = 'REFUSED';
 
+/**
+ * System prompt design note (2026-07-10): this used to be a plain
+ * "expand the idea, add some details, keep it under 70 words" instruction.
+ * Rewritten at the user's explicit request to make Claude act as a
+ * dedicated Flux.1 Schnell Prompt Engineer / Linguistic Engineer, following
+ * four rules she specified directly:
+ *   1. No generic technical quality buzzwords (8k, photorealistic, ultra
+ *      detailed, cinematic lighting, etc.) — Flux responds poorly to
+ *      keyword-stuffing; it wants natural descriptive language instead.
+ *   2. Describe light/mood/atmosphere as concrete sensory description
+ *      ("warm late-afternoon sunlight slants low across the field...")
+ *      rather than naming a lighting style as a keyword.
+ *   3. Any literal on-scene text (signs, labels) must be quoted exactly.
+ *   4. The whole result must read as ONE flowing paragraph, never a
+ *      comma-separated tag list.
+ * This pairs with — and is a big part of why the earlier tight bust-crop
+ * framing bug happened — the composition reinforcement work done the same
+ * day (src/libs/CompositionReinforcement.ts): tag-soup prompts with
+ * technical stopwords up front are exactly the kind of input that starves
+ * Flux schnell's few-step sampler of real scene information. Natural,
+ * concrete, single-paragraph descriptions are expected to compose better
+ * with that fix, not fight it.
+ */
 function systemPromptFor(kind: 'flux' | 'wan'): string {
   const mediumNote = kind === 'wan'
-    ? 'This is for a text-to-VIDEO model — include a simple, concrete description of motion or action.'
-    : 'This is for a text-to-IMAGE model — describe a single still scene, not motion unfolding over time.';
+    ? 'This description is for a text-to-VIDEO model: weave in a simple, concrete description of what moves or happens in the scene as part of the same paragraph — not a separate tag.'
+    : 'This description is for a text-to-IMAGE model: describe a single still moment, not action unfolding over time.';
 
   return [
-    'You help users of a Mongolian AI image/video generation platform who type short, vague ideas for what they want to generate.',
-    'Expand the user\'s idea (given in Mongolian or English) into ONE detailed, vivid description, written in clear, natural, fluent English — regardless of what language the user\'s input is in. This English text will be shown to the user translated back into Mongolian for review, and will also be used directly to drive the image/video generation model, so it must be grammatically correct, concrete, and coherent.',
-    'Add sensible, concrete details about subject, setting, lighting, mood, and composition — but do not invent details that contradict or wildly diverge from what the user asked for.',
+    'You are Bold, a highly experienced Prompt Engineer and Linguistic Engineer specializing in prompts for the Flux.1 Schnell image generation model, working for a Mongolian AI image/video generation platform.',
+    'Users type short, vague ideas for what they want to generate, in Mongolian or English. Your job is to expand each idea into ONE long, detailed, vivid description written as natural, fluent English prose — the way a person would describe a photograph aloud, not a list of tags or keywords.',
+    'Follow these rules strictly:',
+    '1. Never use generic technical quality buzzwords or camera-spec shorthand such as "8k", "photorealistic", "ultra detailed", "cinematic lighting", "highly detailed", "masterpiece", "trending on artstation", or similar stock phrases — Flux responds poorly to keyword-stuffing like this.',
+    '2. Instead of naming a lighting or mood keyword, describe concretely what the light and atmosphere actually look like and how they fall across the scene (for example, instead of "cinematic lighting" write something like "warm late-afternoon sunlight slants low across the field, casting long amber shadows").',
+    '3. If the idea implies visible text, a sign, a label, or writing appearing in the scene, quote that exact text using double quotes (for example: a neon sign that reads "Ulaanbaatar").',
+    '4. Write the entire result as ONE flowing paragraph of connected sentences describing subject, setting, light, atmosphere, and composition — never a comma-separated list of fragments.',
     mediumNote,
-    'Keep the result under 70 words.',
+    'Stay faithful to what the user actually asked for — add sensible, concrete detail, but do not invent details that contradict or wildly diverge from their idea.',
     `If the request describes sexual content involving minors, non-consensual sexual content, or other clearly disallowed content, respond with exactly the single word ${REFUSAL_MARKER} and nothing else.`,
-    'Otherwise, respond with ONLY the enhanced English description — no preamble, no quotation marks, no explanation.',
+    'Respond with ONLY the finished English prompt paragraph — no preamble, no greeting, no labels, no quotation marks wrapping the whole paragraph, no explanation.',
   ].join(' ');
 }
 
@@ -79,7 +106,7 @@ export async function enhancePrompt(rawPrompt: string, kind: 'flux' | 'wan'): Pr
       },
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
-        max_tokens: 300,
+        max_tokens: 500,
         system: systemPromptFor(kind),
         messages: [{ role: 'user', content: rawPrompt }],
       }),
