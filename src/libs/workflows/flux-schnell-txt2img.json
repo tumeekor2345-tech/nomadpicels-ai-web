@@ -22,12 +22,12 @@
   },
   "8": {
     "inputs": {
-      "samples": ["28", 0],
+      "samples": ["13", 0],
       "vae": ["10", 0]
     },
     "class_type": "VAEDecode",
     "_meta": {
-      "title": "VAE Decode (hi-res pass)"
+      "title": "VAE Decode"
     }
   },
   "9": {
@@ -95,7 +95,7 @@
   "17": {
     "inputs": {
       "scheduler": "sgm_uniform",
-      "steps": 12,
+      "steps": 20,
       "denoise": 1,
       "model": ["12", 0]
     },
@@ -121,51 +121,6 @@
     "class_type": "RandomNoise",
     "_meta": {
       "title": "RandomNoise"
-    }
-  },
-  "26": {
-    "inputs": {
-      "noise_seed": 108076821791991
-    },
-    "class_type": "RandomNoise",
-    "_meta": {
-      "title": "RandomNoise (hi-res pass)"
-    }
-  },
-  "27": {
-    "inputs": {
-      "scheduler": "sgm_uniform",
-      "steps": 8,
-      "denoise": 0.45,
-      "model": ["12", 0]
-    },
-    "class_type": "BasicScheduler",
-    "_meta": {
-      "title": "BasicScheduler (hi-res pass)"
-    }
-  },
-  "28": {
-    "inputs": {
-      "noise": ["26", 0],
-      "guider": ["22", 0],
-      "sampler": ["16", 0],
-      "sigmas": ["27", 0],
-      "latent_image": ["40", 0]
-    },
-    "class_type": "SamplerCustomAdvanced",
-    "_meta": {
-      "title": "SamplerCustomAdvanced (hi-res pass)"
-    }
-  },
-  "40": {
-    "inputs": {
-      "samples": ["13", 0],
-      "upscale_method": "bislerp",
-      "scale_by": 1.5
-    },
-    "class_type": "LatentUpscaleBy",
-    "_meta": {
-      "title": "Latent Upscale By (hi-res fix)"
     }
   }
 }

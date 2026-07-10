@@ -229,8 +229,7 @@ export function buildFluxInput(
 ) {
   const FLUX_PROMPT_NODE_ID = '6'; // CLIPTextEncode (prompt)
   const FLUX_SIZE_NODE_ID = '5'; // EmptyLatentImage
-  const FLUX_SEED_NODE_ID = '25'; // RandomNoise (first/base pass)
-  const FLUX_HIRES_SEED_NODE_ID = '26'; // RandomNoise (hi-res pass)
+  const FLUX_SEED_NODE_ID = '25'; // RandomNoise
 
   // NOTE: this workflow previously ran every generation through a
   // custom-trained Mongolian-style LoRA (LoraLoaderModelOnly node "30",
@@ -248,31 +247,23 @@ export function buildFluxInput(
   // src/libs/workflows/flux-schnell-txt2img.json and patch its
   // strength_model here the same way.
   //
-  // HI-RES FIX (added 2026-07-10, at the user's request): the base pass
-  // (nodes 5/13/17/22/25, ~20 steps, denoise 1) now feeds a second,
-  // detail-adding pass instead of going straight to VAEDecode. Node "40"
-  // (LatentUpscaleBy) upscales the base pass's latent 1.5x, then nodes
-  // 26/27/28 run a second SamplerCustomAdvanced at partial denoise (0.45,
-  // 10 configured steps) over the upscaled latent — same model ("12") and
-  // same text conditioning (guider "22" is reused from the base pass).
-  // VAEDecode ("8") now reads from the hi-res pass's output ("28") instead
-  // of the base pass's ("13"). This roughly doubles generation time per
-  // image but produces a sharper, more detailed final image, matching what
-  // Automatic1111/ComfyUI communities call "hires fix". Applies to every
-  // txt2img Flux generation (not the img2img tools — Photo Restore/Image
-  // Effect — which already run a single partial-denoise pass over a
-  // user-supplied image and weren't in scope for this change).
-  //
-  // The hi-res pass gets its own noise (node 26, seed derived from the same
-  // base seed) rather than reusing node 25's noise — reusing the exact same
-  // noise for a second pass with different sigmas would be incorrect and
-  // tends to produce muddier detail than genuinely fresh noise.
-  const baseSeed = params.seed ?? Math.floor(Math.random() * 1_000_000_000_000);
+  // HI-RES FIX — added 2026-07-10 (1.5x latent upscale + second detail pass
+  // via nodes 26/27/28/40), REMOVED the same day at the user's request: live
+  // testing showed generations drifting away from the requested subject
+  // (e.g. "Mongolian woman wearing a deel" produced unrelated clothing/
+  // architecture) and roughly doubled generation time without a clear
+  // quality win. Reverted back to a single base pass (steps bumped 12 -> 20
+  // as a partial substitute for the detail the hi-res pass was adding). If
+  // hi-res fix is revisited later, see git history around this date for the
+  // node graph (LatentUpscaleBy "40" fed by the base SamplerCustomAdvanced
+  // "13", then a second RandomNoise/BasicScheduler/SamplerCustomAdvanced at
+  // denoise ~0.45) and consider debugging the subject-drift issue first
+  // (possibly the composition-reinforcement prompt text competing with the
+  // hi-res pass's own partial re-denoising) rather than re-adding blind.
   const patched = patchWorkflow(workflow, {
     [FLUX_PROMPT_NODE_ID]: { text: params.prompt },
     [FLUX_SIZE_NODE_ID]: { width: params.width ?? 1024, height: params.height ?? 1024 },
-    [FLUX_SEED_NODE_ID]: { noise_seed: baseSeed },
-    [FLUX_HIRES_SEED_NODE_ID]: { noise_seed: baseSeed + 1 },
+    [FLUX_SEED_NODE_ID]: { noise_seed: params.seed ?? Math.floor(Math.random() * 1_000_000_000_000) },
   });
 
   return { workflow: patched };
