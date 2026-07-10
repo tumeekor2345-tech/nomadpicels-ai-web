@@ -534,15 +534,16 @@ export const GenerateForm = (props: {
                       className="flex flex-col gap-2 rounded-md bg-muted p-2"
                     >
                       {item.images?.[0] && (() => {
-                        const src = item.images[0].type === 'base64'
-                          ? `data:image/png;base64,${item.images[0].data}`
-                          : item.images[0].data;
+                        const firstImage = item.images[0];
+                        const src = firstImage.type === 'base64'
+                          ? `data:image/png;base64,${firstImage.data}`
+                          : firstImage.data;
                         return (
                           <button
                             type="button"
                             onClick={() => setLightboxImage({
                               src,
-                              filename: item.images![0].filename,
+                              filename: firstImage.filename,
                               caption: item.prompt,
                             })}
                             className="group relative block overflow-hidden rounded-md"
