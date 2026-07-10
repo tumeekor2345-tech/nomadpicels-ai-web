@@ -35,10 +35,17 @@ type StrengthId = 'light' | 'medium' | 'strong';
 // unlike the AI Image panel's "reference influence" (which is inverted:
 // high influence = low denoise), a stronger effect should mean a *higher*
 // denoise, so this is its own, unrelated-to-ImagePresets map.
+//
+// Raised 2026-07-10: at the old values (0.35/0.55/0.75) results stayed too
+// close to the uploaded photo — user feedback was that even "Дунд" (medium)
+// barely transformed the image. Pushed all three tiers up so the chosen
+// style/effect actually reads as a real transformation, not a light filter,
+// while "Хөнгөн" (light) still keeps enough of the original to feel like a
+// touch-up rather than a repaint.
 const STRENGTH_DENOISE: Record<StrengthId, number> = {
-  light: 0.35,
-  medium: 0.55,
-  strong: 0.75,
+  light: 0.5,
+  medium: 0.7,
+  strong: 0.88,
 };
 
 // Uploaded photos are downscaled client-side before being sent as a data URI
