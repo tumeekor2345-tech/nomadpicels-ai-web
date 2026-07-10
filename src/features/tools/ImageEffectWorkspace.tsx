@@ -36,16 +36,17 @@ type StrengthId = 'light' | 'medium' | 'strong';
 // high influence = low denoise), a stronger effect should mean a *higher*
 // denoise, so this is its own, unrelated-to-ImagePresets map.
 //
-// Raised 2026-07-10: at the old values (0.35/0.55/0.75) results stayed too
-// close to the uploaded photo — user feedback was that even "Дунд" (medium)
-// barely transformed the image. Pushed all three tiers up so the chosen
-// style/effect actually reads as a real transformation, not a light filter,
-// while "Хөнгөн" (light) still keeps enough of the original to feel like a
-// touch-up rather than a repaint.
+// Raised 2026-07-10 (round 2): even the first bump (0.5/0.7/0.88) wasn't
+// enough — user tested "Хүчтэй" (strong, 0.88) and still called the change
+// too small. Pushing further so "Хүчтэй" is now close to a full repaint
+// (0.97 — just short of 1.0/pure txt2img, to keep a thread of continuity
+// with the uploaded photo's framing), "Дунд" now sits where "Хүчтэй" used
+// to be, and "Хөнгөн" moves up to what used to be "Дунд" so the whole scale
+// shifts toward "more transformed" as requested.
 const STRENGTH_DENOISE: Record<StrengthId, number> = {
-  light: 0.5,
-  medium: 0.7,
-  strong: 0.88,
+  light: 0.7,
+  medium: 0.85,
+  strong: 0.97,
 };
 
 // Uploaded photos are downscaled client-side before being sent as a data URI
@@ -97,17 +98,27 @@ function applyColorFilter(pngDataUrl: string, filter: string): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(pngDataUrl);
+          return;
+        }
+        ctx.filter = filter;
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      } catch (err) {
+        // Falls back to the un-graded AI output rather than hanging forever
+        // (e.g. a tainted-canvas SecurityError if the source ever turns out
+        // to be a cross-origin URL instead of a data: URI) — logged so it's
+        // visible in devtools if this path ever actually fires.
+        // eslint-disable-next-line no-console
+        console.error('applyColorFilter failed, showing ungraded image', err);
         resolve(pngDataUrl);
-        return;
       }
-      ctx.filter = filter;
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
     };
     img.onerror = () => resolve(pngDataUrl);
     img.src = pngDataUrl;
