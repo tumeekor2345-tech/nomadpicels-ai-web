@@ -88,6 +88,8 @@ export default async function CreateVideoPage(props: {
           finalPromptHint: t('final_prompt_hint'),
           finalPromptLoading: t('final_prompt_loading'),
           finalPromptRefresh: t('final_prompt_refresh'),
+          historyView: t('history_view'),
+          historyLightboxClose: t('history_lightbox_close'),
         }}
       />
     </>

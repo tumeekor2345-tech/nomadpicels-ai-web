@@ -110,6 +110,8 @@ export const GenerateForm = (props: {
     finalPromptHint: string;
     finalPromptLoading: string;
     finalPromptRefresh: string;
+    historyView: string;
+    historyLightboxClose: string;
   };
   /**
    * When set, this form is locked to a single mode (dedicated Image or Video
@@ -153,6 +155,13 @@ export const GenerateForm = (props: {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Lightbox for the history grid — added 2026-07-10. The history thumbnails
+  // used to be plain, unclickable <img>/<video> tags with no way to see the
+  // full-size image or download it (the download link only ever existed on
+  // the current "Үр дүн" result, not on past history items). Clicking a
+  // history image opens it full-size here, with its own download link.
+  const [lightboxImage, setLightboxImage] = useState<{ src: string; filename: string; caption: string } | null>(null);
 
   // "Эцсийн Prompt" — stage 3 of the 4-stage pipeline in
   // src/libs/PromptPipeline.ts, exposed 2026-07-09 so the user can see (and
@@ -524,16 +533,39 @@ export const GenerateForm = (props: {
                       key={item.id}
                       className="flex flex-col gap-2 rounded-md bg-muted p-2"
                     >
-                      {item.images?.[0] && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={item.images[0].type === 'base64'
-                            ? `data:image/png;base64,${item.images[0].data}`
-                            : item.images[0].data}
-                          alt={item.prompt}
-                          className="aspect-square rounded-md object-cover"
-                        />
-                      )}
+                      {item.images?.[0] && (() => {
+                        const src = item.images[0].type === 'base64'
+                          ? `data:image/png;base64,${item.images[0].data}`
+                          : item.images[0].data;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setLightboxImage({
+                              src,
+                              filename: item.images![0].filename,
+                              caption: item.prompt,
+                            })}
+                            className="group relative block overflow-hidden rounded-md"
+                            aria-label={props.labels.historyView}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={src}
+                              alt={item.prompt}
+                              className="aspect-square rounded-md object-cover"
+                            />
+                            <span className="
+                              absolute inset-0 flex items-center justify-center
+                              bg-black/0 text-xs font-medium text-transparent
+                              transition-colors
+                              group-hover:bg-black/40 group-hover:text-white
+                            "
+                            >
+                              {props.labels.historyView}
+                            </span>
+                          </button>
+                        );
+                      })()}
                       {item.videoUrl && (
                         // eslint-disable-next-line jsx-a11y/media-has-caption
                         <video
@@ -933,6 +965,46 @@ export const GenerateForm = (props: {
           </div>
         </form>
       </div>
+
+      {/* History lightbox — see the lightboxImage state comment above. Fixed
+          overlay so it works regardless of where it sits in the DOM tree. */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
+          onClick={() => setLightboxImage(null)}
+        >
+          <div
+            className="flex max-h-full max-w-full flex-col items-center gap-3"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxImage.src}
+              alt={lightboxImage.caption}
+              className="max-h-[80vh] max-w-full rounded-md object-contain"
+            />
+            <div className="flex items-center gap-4">
+              <a
+                href={lightboxImage.src}
+                download={lightboxImage.filename}
+                className="text-sm font-medium text-white underline"
+              >
+                {props.labels.downloadLabel}
+              </a>
+              <button
+                type="button"
+                onClick={() => setLightboxImage(null)}
+                className="
+                  flex items-center gap-1 text-sm font-medium text-white
+                "
+              >
+                <X className="size-4" />
+                {props.labels.historyLightboxClose}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -213,7 +213,9 @@
     "final_prompt_title": "Эцсийн Prompt (Flux/Wan-д очих текст)",
     "final_prompt_hint": "Орчуулга болон угсаатан/дүрсийн засварласны дараах бодит текст. Шууд засварлаж болно — засварласан текст л илгээгдэнэ.",
     "final_prompt_loading": "Тооцоолж байна...",
-    "final_prompt_refresh": "Шинэчлэх"
+    "final_prompt_refresh": "Шинэчлэх",
+    "history_view": "Томруулж харах",
+    "history_lightbox_close": "Хаах"
   },
   "ToolsPage": {
     "title_bar": "Tools",
