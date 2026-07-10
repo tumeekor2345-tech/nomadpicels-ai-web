@@ -56,6 +56,21 @@ async function myMemoryTranslate(text: string, langpair: string): Promise<string
     const data = await res.json();
     const translated = data?.responseData?.translatedText;
 
+    // MyMemory sometimes returns HTTP 200 with an error MESSAGE stuffed into
+    // responseData.translatedText instead of a real translation — e.g.
+    // "QUERY LENGTH LIMIT EXCEEDED. MAX ALLOWED QUERY : 500 CHARS" when the
+    // input text is too long (its free tier caps `q` at 500 chars). Found
+    // live 2026-07-10 after PromptEnhance.ts started producing longer
+    // single-paragraph descriptions: the error string was passed straight
+    // through as if it were the Mongolian translation and shown to the user.
+    // Guard against both that specific case and a non-200 responseStatus.
+    if (data?.responseStatus && data.responseStatus !== 200) {
+      return null;
+    }
+    if (typeof translated === 'string' && /QUERY LENGTH LIMIT EXCEEDED/i.test(translated)) {
+      return null;
+    }
+
     if (typeof translated === 'string' && translated.trim().length > 0) {
       return translated;
     }
@@ -170,8 +185,48 @@ export async function translateMongolianToEnglish(text: string): Promise<string>
  * failure falls back to the original (English) text, so a translation
  * hiccup just means the preview box shows English instead of Mongolian
  * rather than breaking anything.
+ *
+ * MyMemory's free tier hard-caps the `q` query parameter at 500 characters
+ * and returns an error STRING (not an HTTP error) if exceeded — see the
+ * guard in myMemoryTranslate() above. PromptEnhance.ts's 2026-07-10 rewrite
+ * (natural single-paragraph descriptions, no length cap) routinely produces
+ * English text well past 500 characters, so long input is split into
+ * sentence-boundary chunks under the limit, each translated separately, and
+ * rejoined — this keeps the full-length English prompt intact for
+ * generation while still giving the user a complete Mongolian preview,
+ * instead of silently truncating or falling back to all-English.
  */
+const MYMEMORY_CHUNK_MAX_CHARS = 450;
+
+function splitIntoTranslatableChunks(text: string, maxChars: number): string[] {
+  const sentences = text.match(/[^.!?]+[.!?]*\s*/g) ?? [text];
+  const chunks: string[] = [];
+  let current = '';
+
+  for (const sentence of sentences) {
+    if (current.length > 0 && (current.length + sentence.length) > maxChars) {
+      chunks.push(current.trim());
+      current = sentence;
+    } else {
+      current += sentence;
+    }
+  }
+  if (current.trim().length > 0) {
+    chunks.push(current.trim());
+  }
+
+  return chunks;
+}
+
 export async function translateEnglishToMongolian(text: string): Promise<string> {
-  const translated = await myMemoryTranslate(text, 'en|mn');
-  return translated ?? text;
+  if (text.length <= MYMEMORY_CHUNK_MAX_CHARS) {
+    const translated = await myMemoryTranslate(text, 'en|mn');
+    return translated ?? text;
+  }
+
+  const chunks = splitIntoTranslatableChunks(text, MYMEMORY_CHUNK_MAX_CHARS);
+  const translatedChunks = await Promise.all(
+    chunks.map(async chunk => (await myMemoryTranslate(chunk, 'en|mn')) ?? chunk),
+  );
+  return translatedChunks.join(' ');
 }
