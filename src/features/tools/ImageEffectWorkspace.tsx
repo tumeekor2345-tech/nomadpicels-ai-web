@@ -16,7 +16,14 @@ import {
   EFFECT_PRESETS,
   STYLE_PRESETS,
 } from '@/libs/ImagePresets';
+import {
+  CAMERA_ANGLE_VISUALS,
+  COLOR_PALETTE_VISUALS,
+  EFFECT_VISUALS,
+  STYLE_VISUALS,
+} from '@/libs/PresetVisuals';
 import { HistoryStrip } from './HistoryStrip';
+import { PresetPicker } from './PresetPicker';
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 10 * 60 * 1000;
@@ -177,61 +184,41 @@ export const ImageEffectWorkspace = (props: { labels: Labels }) => {
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="image-effect-style">{labels.styleLabel}</Label>
-          <select
-            id="image-effect-style"
-            className={selectClassName}
-            value={styleId}
-            onChange={e => setStyleId(e.target.value as StyleId)}
-          >
-            {STYLE_PRESETS.map(preset => (
-              <option key={preset.id} value={preset.id}>{labels.styleLabels[preset.id]}</option>
-            ))}
-          </select>
-        </div>
+        <PresetPicker
+          label={labels.styleLabel}
+          presets={STYLE_PRESETS}
+          visuals={STYLE_VISUALS}
+          labels={labels.styleLabels}
+          value={styleId}
+          onChange={setStyleId}
+        />
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="image-effect-color">{labels.colorLabel}</Label>
-          <select
-            id="image-effect-color"
-            className={selectClassName}
-            value={colorPaletteId}
-            onChange={e => setColorPaletteId(e.target.value as ColorPaletteId)}
-          >
-            {COLOR_PALETTE_PRESETS.map(preset => (
-              <option key={preset.id} value={preset.id}>{labels.colorLabels[preset.id]}</option>
-            ))}
-          </select>
-        </div>
+        <PresetPicker
+          label={labels.colorLabel}
+          presets={COLOR_PALETTE_PRESETS}
+          visuals={COLOR_PALETTE_VISUALS}
+          labels={labels.colorLabels}
+          value={colorPaletteId}
+          onChange={setColorPaletteId}
+        />
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="image-effect-effect">{labels.effectLabel}</Label>
-          <select
-            id="image-effect-effect"
-            className={selectClassName}
-            value={effectId}
-            onChange={e => setEffectId(e.target.value as EffectId)}
-          >
-            {EFFECT_PRESETS.map(preset => (
-              <option key={preset.id} value={preset.id}>{labels.effectLabels[preset.id]}</option>
-            ))}
-          </select>
-        </div>
+        <PresetPicker
+          label={labels.effectLabel}
+          presets={EFFECT_PRESETS}
+          visuals={EFFECT_VISUALS}
+          labels={labels.effectLabels}
+          value={effectId}
+          onChange={setEffectId}
+        />
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="image-effect-angle">{labels.angleLabel}</Label>
-          <select
-            id="image-effect-angle"
-            className={selectClassName}
-            value={cameraAngleId}
-            onChange={e => setCameraAngleId(e.target.value as CameraAngleId)}
-          >
-            {CAMERA_ANGLE_PRESETS.map(preset => (
-              <option key={preset.id} value={preset.id}>{labels.angleLabels[preset.id]}</option>
-            ))}
-          </select>
-        </div>
+        <PresetPicker
+          label={labels.angleLabel}
+          presets={CAMERA_ANGLE_PRESETS}
+          visuals={CAMERA_ANGLE_VISUALS}
+          labels={labels.angleLabels}
+          value={cameraAngleId}
+          onChange={setCameraAngleId}
+        />
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="image-effect-strength">{labels.strengthLabel}</Label>
