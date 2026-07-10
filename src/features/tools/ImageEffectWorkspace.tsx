@@ -6,9 +6,9 @@ import type {
   EffectId,
   StyleId,
 } from '@/libs/ImagePresets';
+import type { ChangeEvent } from 'react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   CAMERA_ANGLE_PRESETS,
@@ -40,6 +40,43 @@ const STRENGTH_DENOISE: Record<StrengthId, number> = {
   strong: 0.75,
 };
 
+// Uploaded photos are downscaled client-side before being sent as a data URI
+// — keeps the request body well under Vercel's serverless body-size limit
+// and speeds up the RunPod img2img step, since thumbnail-grade output is all
+// this tool needs anyway.
+const MAX_UPLOAD_DIMENSION = 1280;
+
+function resizeImageFileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > MAX_UPLOAD_DIMENSION || height > MAX_UPLOAD_DIMENSION) {
+          const scale = MAX_UPLOAD_DIMENSION / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('canvas not supported'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => reject(new Error('image load failed'));
+      img.src = typeof reader.result === 'string' ? reader.result : '';
+    };
+    reader.onerror = () => reject(new Error('file read failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
 const selectClassName = `
   flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3
   py-1 text-base shadow-xs outline-none
@@ -63,6 +100,10 @@ type Labels = {
   strengthStrong: string;
   imageUrlLabel: string;
   imageUrlPlaceholder: string;
+  imageUploadLabel: string;
+  imageUploadButton: string;
+  imageUploadRemove: string;
+  imageUploadHint: string;
   run: string;
   running: string;
   queued: string;
@@ -78,6 +119,9 @@ type Labels = {
 export const ImageEffectWorkspace = (props: { labels: Labels }) => {
   const { labels } = props;
   const [imageUrl, setImageUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [styleId, setStyleId] = useState<StyleId>('none');
   const [colorPaletteId, setColorPaletteId] = useState<ColorPaletteId>('none');
   const [effectId, setEffectId] = useState<EffectId>('none');
@@ -164,6 +208,24 @@ export const ImageEffectWorkspace = (props: { labels: Labels }) => {
     pollStatus(data.jobId, Date.now());
   };
 
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file after removing it
+    if (!file) {
+      return;
+    }
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const dataUrl = await resizeImageFileToDataUrl(file);
+      setImageUrl(dataUrl);
+    } catch {
+      setUploadError(labels.failed);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="
       grid grid-cols-1 gap-4
@@ -173,15 +235,58 @@ export const ImageEffectWorkspace = (props: { labels: Labels }) => {
       {/* Left: configuration */}
       <div className="flex flex-col gap-4 rounded-md bg-card p-5">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="image-effect-url">{labels.imageUrlLabel}</Label>
-          <Input
-            id="image-effect-url"
-            type="url"
-            required
-            value={imageUrl}
-            onChange={e => setImageUrl(e.target.value)}
-            placeholder={labels.imageUrlPlaceholder}
+          <Label>{labels.imageUploadLabel}</Label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
           />
+          {imageUrl
+            ? (
+                <div className="flex flex-col gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    className="max-h-48 w-full rounded-md object-cover"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploading}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {labels.imageUploadButton}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setImageUrl('')}
+                    >
+                      {labels.imageUploadRemove}
+                    </Button>
+                  </div>
+                </div>
+              )
+            : (
+                <div className="flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploading ? labels.running : labels.imageUploadButton}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">{labels.imageUploadHint}</p>
+                </div>
+              )}
+          {uploadError && <div className="text-sm font-medium text-destructive">{uploadError}</div>}
         </div>
 
         <PresetPicker
