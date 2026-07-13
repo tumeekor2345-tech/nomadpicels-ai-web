@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useResolvePendingGenerations } from '@/features/generate/useResolvePendingGenerations';
 
 type HistoryItem = {
   id: number;
   kind: string;
+  jobId?: string | null;
   status: string;
   images?: Array<{ filename: string; type: string; data: string }>;
   createdAt: string;
@@ -24,6 +26,10 @@ export const HistoryStrip = (props: {
 }) => {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+
+  // Un-sticks any generation still shown as IN_QUEUE/IN_PROGRESS here — see
+  // useResolvePendingGenerations.ts for why that happens in the first place.
+  useResolvePendingGenerations(items, setItems);
 
   useEffect(() => {
     let cancelled = false;

@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useResolvePendingGenerations } from '@/features/generate/useResolvePendingGenerations';
 import {
   ASPECT_RATIOS,
   buildFinalPrompt,
@@ -55,6 +56,7 @@ type JobStatus = {
 type HistoryItem = {
   id: number;
   kind: Kind;
+  jobId?: string | null;
   prompt: string;
   status: string;
   images?: Array<{ filename: string; type: string; data: string }>;
@@ -166,6 +168,12 @@ export const GenerateForm = (props: {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Un-sticks any generation still shown as IN_QUEUE/IN_PROGRESS in this
+  // list (e.g. one submitted from a different tab/session, or one whose
+  // original polling stopped because the user navigated away — see
+  // useResolvePendingGenerations.ts for the full story).
+  useResolvePendingGenerations(history, setHistory);
 
   // Lightbox for the history grid — added 2026-07-10. The history thumbnails
   // used to be plain, unclickable <img>/<video> tags with no way to see the

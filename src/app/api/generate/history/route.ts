@@ -62,6 +62,7 @@ export async function GET(request: Request) {
     return {
       id: row.id,
       kind: row.kind,
+      jobId: row.jobId,
       prompt: row.prompt,
       status: row.status,
       images,
