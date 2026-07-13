@@ -32,6 +32,7 @@ export default async function CreateImagePage(props: {
           submit: t('submit'),
           submitting: t('submitting'),
           queued: t('queued'),
+          queuedWithPosition: t('queued_with_position'),
           inProgress: t('in_progress'),
           failed: t('failed'),
           fluxNotConfigured: t('flux_not_configured'),

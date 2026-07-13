@@ -41,6 +41,15 @@ export type FalModelId
 export type FalJobStatus = {
   id: string; // the composite `fal::{modelId}::{requestId}` string
   status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  // How many other requests are ahead of this one in fal's shared, per-model
+  // queue (only meaningful while status is IN_QUEUE — see docs.fal.ai/
+  // model-endpoints/queue's `queue_position` field). fal-ai/flux/dev and
+  // fal-ai/nano-banana-2 are public gallery models: every fal.ai customer
+  // hitting that same model shares ONE queue, so wait time is driven by
+  // global demand, not anything on our end — surfacing this number is the
+  // main lever we have to make a long wait feel less like "it's stuck" and
+  // more like "N people ahead, then yours."
+  queuePosition?: number;
   output?: {
     images?: Array<{ filename: string; type: 'base64' | 's3_url'; data: string }>;
     result?: string; // video URL, mirrors RunPod Wan's { result: <url> } shape used by GenerateForm.tsx
@@ -146,11 +155,16 @@ export async function getFalJobStatus(jobId: string): Promise<FalJobStatus> {
 
   const statusData = await statusRes.json() as {
     status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED';
+    queue_position?: number;
     error?: string;
   };
 
   if (statusData.status !== 'COMPLETED') {
-    return { id: jobId, status: statusData.status };
+    return {
+      id: jobId,
+      status: statusData.status,
+      queuePosition: typeof statusData.queue_position === 'number' ? statusData.queue_position : undefined,
+    };
   }
 
   // fal has no separate FAILED status — a failed request shows up as

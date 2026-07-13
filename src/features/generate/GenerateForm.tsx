@@ -44,6 +44,11 @@ const FLUX_ENGINES: FluxEngineId[] = ['runpod', 'fal_flux_dev', 'fal_nanobanana2
 type JobStatus = {
   id: string;
   status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'TIMED_OUT';
+  // Only set for fal.ai jobs (see src/libs/Fal.ts's FalJobStatus) while
+  // status is IN_QUEUE — how many other requests are ahead in fal's shared
+  // per-model queue. RunPod jobs never have this (dedicated pod, no queue to
+  // report a position in), so it's always undefined there.
+  queuePosition?: number;
   output?: {
     images?: Array<{ filename: string; type: 'base64' | 's3_url'; data: string }>;
     errors?: string[];
@@ -81,6 +86,11 @@ export const GenerateForm = (props: {
     submit: string;
     submitting: string;
     queued: string;
+    // "{count}" placeholder gets replaced with the live queue_position from
+    // fal.ai — see JobStatus.queuePosition above. Falls back to plain
+    // `queued` when a job has no queue position to report (RunPod jobs, or
+    // a fal job whose position fal hasn't reported yet).
+    queuedWithPosition: string;
     inProgress: string;
     failed: string;
     fluxNotConfigured: string;
@@ -309,7 +319,15 @@ export const GenerateForm = (props: {
       return;
     }
 
-    setStatusText(data.status === 'IN_QUEUE' ? props.labels.queued : props.labels.inProgress);
+    if (data.status === 'IN_QUEUE') {
+      setStatusText(
+        typeof data.queuePosition === 'number'
+          ? props.labels.queuedWithPosition.replace('{count}', String(data.queuePosition))
+          : props.labels.queued,
+      );
+    } else {
+      setStatusText(props.labels.inProgress);
+    }
     pollTimer.current = setTimeout(pollStatus, POLL_INTERVAL_MS, jobKind, jobId, startedAt);
   };
 

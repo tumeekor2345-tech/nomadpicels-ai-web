@@ -163,6 +163,7 @@
     "submit": "Generate",
     "submitting": "Starting...",
     "queued": "Queued, waiting for a GPU worker...",
+    "queued_with_position": "Queued — {count} ahead of you...",
     "in_progress": "Generating...",
     "failed": "Generation failed. Please try again.",
     "flux_not_configured": "Image generation isn't fully configured yet — the Flux workflow file is missing.",
