@@ -117,9 +117,20 @@ export async function submitFalJob(
 export async function getFalJobStatus(jobId: string): Promise<FalJobStatus> {
   const { modelId, requestId } = decodeFalJobId(jobId);
 
+  // NOTE: this uses POST, not GET, for the status/result checks below.
+  // Per fal.ai's docs (docs.fal.ai/model-endpoints/queue) these should be
+  // plain GETs, but in production (and reproduced independently from a
+  // plain browser fetch with no auth at all) GET requests to
+  // queue.fal.run/.../status and /requests/{id} are rejected with an
+  // edge-level 405 (empty body, no error detail) *before* reaching fal's
+  // app layer — while POST to the same URLs reaches the app (returns a
+  // proper 401 JSON error when unauthenticated). This matches a report of
+  // the same symptom in fal's own community forum, attributed there to a
+  // bug on fal's side. Using POST is an empirical workaround: if fal fixes
+  // the GET path, this can be reverted.
   const statusRes = await fetch(
     `${FAL_QUEUE_BASE_URL}/${modelId}/requests/${requestId}/status`,
-    { headers: authHeaders() },
+    { method: 'POST', headers: authHeaders() },
   );
 
   if (!statusRes.ok) {
@@ -145,7 +156,7 @@ export async function getFalJobStatus(jobId: string): Promise<FalJobStatus> {
 
   const resultRes = await fetch(
     `${FAL_QUEUE_BASE_URL}/${modelId}/requests/${requestId}`,
-    { headers: authHeaders() },
+    { method: 'POST', headers: authHeaders() },
   );
 
   if (!resultRes.ok) {
