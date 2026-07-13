@@ -12,6 +12,19 @@ type PendingCapableItem = {
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED', 'CANCELLED', 'TIMED_OUT']);
 const POLL_INTERVAL_MS = 4000;
+// 2026-07-13 cost-safety fix: this hook used to re-poll every non-terminal
+// item forever, with no cap — discovered live that a handful of test jobs
+// from earlier in the day were still sitting IN_QUEUE and getting hit every
+// 4s, indefinitely, for as long as any page listing history was open. Each
+// poll calls fal.ai's status API (see src/libs/Fal.ts's getFalJobStatus),
+// and fal.ai's real billing (checked on the fal.ai dashboard) turned out to
+// be several times higher per job than the flat per-megapixel rate would
+// predict — an indefinite poll loop against a job that's stuck/dead on fal's
+// side is the most likely multiplier. Capping how many times any single
+// jobId gets polled here bounds the worst case regardless of the exact fal
+// billing mechanism, while still giving a healthy job (which finishes in
+// well under this window) plenty of chances to resolve.
+const MAX_POLL_ATTEMPTS = 40; // ~2.5 minutes at 4s/attempt
 
 /**
  * Why this exists: a generation job is only actively polled by the
@@ -38,10 +51,15 @@ export function useResolvePendingGenerations<T extends PendingCapableItem>(
   setItems: Dispatch<SetStateAction<T[]>>,
 ) {
   const inFlight = useRef<Set<string>>(new Set());
+  const attemptCounts = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     const pending = items.filter(
-      item => item.jobId && !TERMINAL_STATUSES.has(item.status) && !inFlight.current.has(item.jobId),
+      item =>
+        item.jobId
+        && !TERMINAL_STATUSES.has(item.status)
+        && !inFlight.current.has(item.jobId)
+        && (attemptCounts.current.get(item.jobId) ?? 0) < MAX_POLL_ATTEMPTS,
     );
 
     if (pending.length === 0) {
@@ -52,6 +70,7 @@ export function useResolvePendingGenerations<T extends PendingCapableItem>(
       pending.forEach((item) => {
         const jobId = item.jobId!;
         inFlight.current.add(jobId);
+        attemptCounts.current.set(jobId, (attemptCounts.current.get(jobId) ?? 0) + 1);
 
         fetch(`/api/generate/status?kind=${item.kind}&jobId=${encodeURIComponent(jobId)}`)
           .then(res => res.json().then(data => ({ ok: res.ok, data })))

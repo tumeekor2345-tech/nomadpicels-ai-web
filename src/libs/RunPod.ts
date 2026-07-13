@@ -285,7 +285,10 @@ export async function getRunPodPublicJobStatus(jobId: string): Promise<RunPodPub
     return { id: jobId, status: 'COMPLETED', output: { result: data.output.video_url } };
   }
 
-  return { id: jobId, status: 'FAILED', error: 'RunPod public endpoint returned no image or video in the result.' };
+  // TEMP DEBUG 2026-07-14: the assumed output.image_url/video_url shape
+  // isn't matching what the live endpoint actually returns — surface the
+  // raw payload so we can see the real shape, then fix and remove this.
+  return { id: jobId, status: 'FAILED', error: `RunPod public endpoint returned no image or video in the result. RAW=${JSON.stringify(data)}` };
 }
 
 /** `black-forest-labs-flux-1-dev` — text-to-image, Mid-tier engine. */
