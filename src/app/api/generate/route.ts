@@ -8,14 +8,6 @@ import type { FluxEngineId } from '@/libs/Pricing';
 import { isAdminUser } from '@/libs/Admin';
 import { isPromptBlocked } from '@/libs/ContentModeration';
 import { db } from '@/libs/DB';
-import {
-  buildFalFluxDevImg2ImgInput,
-  buildFalFluxDevInput,
-  buildFalNanoBanana2EditInput,
-  buildFalNanoBanana2Input,
-  buildFalWanInput,
-  submitFalJob,
-} from '@/libs/Fal';
 import { DEFAULT_FACE_SWAP_STYLE, FACE_SWAP_STYLE_PROMPTS, isFaceSwapStyleId } from '@/libs/FaceSwapStyles';
 import {
   buildImageEffectPrompt,
@@ -30,14 +22,23 @@ import {
   buildFaceSwapInput,
   buildFluxImg2ImgInput,
   buildFluxInput,
+  buildRunPodFluxDevInput,
+  buildRunPodNanoBanana2EditInput,
+  buildWanInput,
   submitRunPodJob,
+  submitRunPodPublicJob,
 } from '@/libs/RunPod';
 import { creditBalanceSchema, generationSchema } from '@/models/Schema';
 
-// "AI Image" tool engine selector, added 2026-07-13 — see src/libs/Pricing.ts
-// (FLUX_ENGINE_CREDIT_COST) and src/libs/Fal.ts. Defaults to 'runpod' (the
-// original self-hosted engine) so old clients that don't send `engine` keep
-// working unchanged.
+// "AI Image" tool engine selector, added 2026-07-13, fully moved off fal.ai
+// onto RunPod Hub's Public Endpoints 2026-07-14 — see src/libs/Pricing.ts
+// (FLUX_ENGINE_CREDIT_COST) and src/libs/RunPod.ts's "RunPod Hub Public
+// Endpoints" section. Defaults to 'runpod' (the original self-hosted
+// engine) so old clients that don't send `engine` keep working unchanged.
+// NOTE: the ids 'fal_flux_dev'/'fal_nanobanana2' are kept as-is (not renamed
+// to 'runpod_flux_dev'/etc.) to avoid touching every file that references
+// them (Pricing.ts, GenerateForm.tsx, translations, existing DB rows) — as
+// of 2026-07-14 both now call RunPod's Public Endpoints, not fal.ai.
 const VALID_FLUX_ENGINES: FluxEngineId[] = ['runpod', 'fal_flux_dev', 'fal_nanobanana2'];
 
 /**
@@ -219,10 +220,10 @@ export async function POST(request: Request) {
     : 'runpod';
   const usingRunPodFlux = body.kind === 'flux' && fluxEngine === 'runpod';
 
-  // Fal-hosted engines (fal_flux_dev / fal_nanobanana2) don't use ComfyUI
-  // workflow.json graphs at all — only the 'runpod' engine, and
-  // photo_restore/image_effect (still RunPod-only for now — see Task #136),
-  // need these loaded.
+  // RunPod Public Endpoint engines (fal_flux_dev / fal_nanobanana2 — see the
+  // note above VALID_FLUX_ENGINES) don't use ComfyUI workflow.json graphs at
+  // all — only the 'runpod' engine, and photo_restore/image_effect (still
+  // the dedicated worker-comfyui endpoint), need these loaded.
   const fluxWorkflow = (usingRunPodFlux && !usingFluxReference) ? loadFluxWorkflow() : null;
   if (usingRunPodFlux && !usingFluxReference && !fluxWorkflow) {
     return NextResponse.json(
@@ -279,34 +280,33 @@ export async function POST(request: Request) {
 
   try {
     if (body.kind === 'flux') {
-      // 3-way engine selector (added 2026-07-13) — 'runpod' keeps the
-      // original self-hosted path unchanged; 'fal_flux_dev' and
-      // 'fal_nanobanana2' route to fal.ai instead (see src/libs/Fal.ts).
+      // 3-way engine selector (added 2026-07-13, moved fully off fal.ai onto
+      // RunPod Hub Public Endpoints 2026-07-14 — see src/libs/RunPod.ts's
+      // "RunPod Hub Public Endpoints" section for why). 'runpod' keeps the
+      // original self-hosted worker-comfyui path unchanged.
+      //
       // referenceImageBase64 arrives as bare base64 (no data: prefix — see
-      // GenerateForm.tsx's handleReferenceFileChange), so fal's image_url
-      // param needs a data: URI built here.
+      // GenerateForm.tsx's handleReferenceFileChange); RunPod's Nano Banana 2
+      // Edit endpoint takes an `images` array of URLs but also accepts a
+      // data: URI directly (same as fal's equivalent did) — built here.
+      //
+      // Nano Banana 2 Edit has no pure text-to-image mode on RunPod's Public
+      // Endpoint catalog (Edit-only, `images` is required) — per the
+      // 2026-07-14 decision, a Top-tier request with no reference image
+      // falls back to the Mid-tier Flux Dev engine rather than failing.
       const referenceDataUrl = usingFluxReference
         ? `data:image/png;base64,${body.referenceImageBase64}`
         : null;
 
-      const job = fluxEngine === 'fal_flux_dev'
-        ? await submitFalJob(
-            referenceDataUrl ? 'fal-ai/flux/dev/image-to-image' : 'fal-ai/flux/dev',
-            referenceDataUrl
-              ? buildFalFluxDevImg2ImgInput({
-                  prompt: modelPrompt,
-                  imageBase64DataUrl: referenceDataUrl,
-                  strength: typeof body.denoise === 'number' ? body.denoise : 0.55,
-                  seed: body.seed,
-                })
-              : buildFalFluxDevInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
+      const job = fluxEngine === 'fal_nanobanana2' && referenceDataUrl
+        ? await submitRunPodPublicJob(
+            'google-nano-banana-2-edit',
+            buildRunPodNanoBanana2EditInput({ prompt: modelPrompt, imageUrl: referenceDataUrl }),
           )
-        : fluxEngine === 'fal_nanobanana2'
-          ? await submitFalJob(
-              referenceDataUrl ? 'fal-ai/nano-banana-2/edit' : 'fal-ai/nano-banana-2',
-              referenceDataUrl
-                ? buildFalNanoBanana2EditInput({ prompt: modelPrompt, imageBase64DataUrl: referenceDataUrl })
-                : buildFalNanoBanana2Input({ prompt: modelPrompt }),
+        : fluxEngine === 'fal_flux_dev' || fluxEngine === 'fal_nanobanana2'
+          ? await submitRunPodPublicJob(
+              'black-forest-labs-flux-1-dev',
+              buildRunPodFluxDevInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
             )
           : await submitRunPodJob(
               'flux',
@@ -338,12 +338,15 @@ export async function POST(request: Request) {
     }
 
     if (body.kind === 'wan') {
-      // Migrated 2026-07-13: Wan video now runs entirely on fal.ai's Wan 2.7
-      // (fal-ai/wan/v2.7/image-to-video) — no engine choice here, unlike the
-      // "AI Image" tool, since RunPod's Wan 2.2 endpoint is being retired.
-      // See wanCreditCost() in src/libs/Pricing.ts for why the credit cost
-      // scales with durationSeconds now instead of a flat 8.
-      const input = buildFalWanInput({
+      // Migrated to fal.ai's Wan 2.7 on 2026-07-13, migrated again 2026-07-14
+      // to RunPod Hub's public "WAN 2.2 I2V 720p" endpoint (`wan-2-2-i2v-720`)
+      // as part of retiring fal.ai entirely — see src/libs/RunPod.ts's "RunPod
+      // Hub Public Endpoints" section. buildWanInput() already builds this
+      // endpoint's exact input shape (it was originally written for it,
+      // before the brief fal.ai detour). See wanCreditCost() in
+      // src/libs/Pricing.ts for why the credit cost scales with
+      // durationSeconds instead of a flat rate.
+      const input = buildWanInput({
         prompt: modelPrompt,
         imageUrl: body.imageUrl,
         negativePrompt: body.negativePrompt,
@@ -352,7 +355,7 @@ export async function POST(request: Request) {
         seed: body.seed,
       });
 
-      const job = await submitFalJob('fal-ai/wan/v2.7/image-to-video', input);
+      const job = await submitRunPodPublicJob('wan-2-2-i2v-720', input);
 
       const [row] = await db.insert(generationSchema).values({
         ownerId: userId,

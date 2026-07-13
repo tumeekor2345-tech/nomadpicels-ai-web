@@ -14,12 +14,13 @@ import { Env } from '@/libs/Env';
  *   `Workflow > Export (API)`. Save it as `src/libs/workflows/flux-schnell-txt2img.json`
  *   (see src/libs/workflows/README.md) — do NOT invent the graph by hand.
  *
- * - `wan`: fastest path is RunPod Hub's pre-built public endpoint
- *   ("WAN 2.2 I2V 720p"), which has its OWN simplified input schema — it is
- *   NOT a worker-comfyui/raw-workflow endpoint. Once deployed to your
- *   account, RunPod's console shows an "API" tab with the exact request
- *   shape for that specific endpoint — copy it into buildWanInput() below
- *   instead of guessing.
+ * - `wan`: 2026-07-14 — routed directly at RunPod Hub's public "WAN 2.2 I2V
+ *   720p" endpoint (`wan-2-2-i2v-720`, see the "RunPod Hub Public Endpoints"
+ *   section below) via submitRunPodPublicJob(), NOT through this file's
+ *   dedicated-endpoint submitRunPodJob()/RUNPOD_WAN_ENDPOINT_ID path — no
+ *   per-account deploy step needed, it's called the same way as the Flux
+ *   Dev / Nano Banana 2 public endpoints. buildWanInput() below still builds
+ *   the correct input shape for it.
  *
  * Usage:
  *   const job = await runSyncRunPodJob('flux', buildFluxInput({ prompt }));
@@ -146,6 +147,182 @@ export async function cancelRunPodJob(kind: GenerationKind, jobId: string): Prom
     method: 'POST',
     headers: authHeaders(),
   });
+}
+
+// --- RunPod Hub "Public Endpoints" -----------------------------------------
+//
+// 2026-07-14: replaced ALL fal.ai usage (Mid-tier Flux Dev, Top-tier Nano
+// Banana 2, Wan video) with RunPod's own Hub "Public Endpoints" — these are
+// pre-deployed, shared serverless endpoints (same /run + /status/{id} +
+// /runsync contract as the dedicated worker-comfyui endpoint above, just a
+// fixed, publicly-known endpoint id instead of one you deploy yourself — no
+// RUNPOD_*_ENDPOINT_ID env var or per-account setup needed). Reasons for the
+// switch, discovered live this session:
+//   - fal.ai's real per-image billing (checked on fal.ai's own usage
+//     dashboard) ran 5-10x higher than its advertised $0.025/megapixel rate
+//     for fal-ai/flux/dev, for reasons never fully pinned down.
+//   - RunPod's equivalent public endpoints are priced transparently per the
+//     official docs (docs.runpod.io/public-endpoints/reference) and come out
+//     cheaper even at face value: Flux Dev $0.02/MP (~$0.021/image at
+//     1024x1024) vs fal's advertised $0.025/MP — and vastly cheaper than
+//     fal's real observed cost.
+//   - One fewer vendor/API surface to keep healthy (no separate FAL_KEY,
+//     no separate queue-position/polling-inconsistency quirks like fal's
+//     GET-405-then-POST-fallback behavior documented in the old Fal.ts).
+//
+// Job id encoding: like fal's composite jobId, a RunPod Public Endpoint job
+// needs BOTH the endpoint id and RunPod's own request id to check status
+// later (status URL is `/{endpointId}/status/{requestId}`), so the "jobId"
+// stored in generationSchema.jobId for these is the composite string
+// `rpub::{endpointId}::{requestId}` — see encodeRunPodPublicJobId /
+// decodeRunPodPublicJobId below. /api/generate/status detects the `rpub::`
+// prefix and routes here instead of the dedicated-endpoint or fal branches.
+
+const RUNPOD_PUBLIC_JOB_PREFIX = 'rpub::';
+
+/** The 3 RunPod Hub Public Endpoint ids this app calls — see
+ * docs.runpod.io/public-endpoints/reference for the full catalog. */
+export type RunPodPublicEndpointId
+  = | 'black-forest-labs-flux-1-dev' // Mid-tier "AI Image" engine — $0.02/megapixel
+    | 'google-nano-banana-2-edit' // Top-tier "AI Image" engine — $0.0875 (1K) / $0.13 (2K) / $0.175 (4K)
+    | 'wan-2-2-i2v-720'; // "AI Video" — $0.30/5s, $0.06/s flat beyond that
+
+export function isRunPodPublicJobId(jobId: string): boolean {
+  return jobId.startsWith(RUNPOD_PUBLIC_JOB_PREFIX);
+}
+
+function encodeRunPodPublicJobId(endpointId: RunPodPublicEndpointId, requestId: string): string {
+  return `${RUNPOD_PUBLIC_JOB_PREFIX}${endpointId}::${requestId}`;
+}
+
+function decodeRunPodPublicJobId(jobId: string): { endpointId: string; requestId: string } {
+  const rest = jobId.slice(RUNPOD_PUBLIC_JOB_PREFIX.length);
+  const lastSep = rest.lastIndexOf('::');
+  if (lastSep === -1) {
+    throw new Error(`Malformed RunPod public-endpoint jobId: "${jobId}"`);
+  }
+  return { endpointId: rest.slice(0, lastSep), requestId: rest.slice(lastSep + 2) };
+}
+
+/** Submits a job to one of the 3 public endpoints above. Mirrors
+ * submitFalJob()'s shape so /api/generate barely has to branch. */
+export async function submitRunPodPublicJob(
+  endpointId: RunPodPublicEndpointId,
+  input: Record<string, unknown>,
+): Promise<{ id: string; status: 'IN_QUEUE' }> {
+  requireRunPodEnv();
+  const res = await fetch(`${RUNPOD_BASE_URL}/${endpointId}/run`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ input }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`RunPod public-endpoint submit failed (${endpointId}): ${res.status} ${await res.text()}`);
+  }
+
+  const data = await res.json() as { id: string };
+  return { id: encodeRunPodPublicJobId(endpointId, data.id), status: 'IN_QUEUE' };
+}
+
+/** Normalized status shape shared with fal's FalJobStatus — GenerateForm.tsx
+ * and /api/generate/status render both the same way. */
+export type RunPodPublicJobStatus = {
+  id: string;
+  status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  output?: {
+    images?: Array<{ filename: string; type: 's3_url'; data: string }>;
+    result?: string; // video URL
+    [key: string]: unknown;
+  };
+  error?: string;
+};
+
+/** Checks status of a previously submitted public-endpoint job and
+ * normalizes RunPod's `output.image_url` / `output.video_url` response
+ * shape into the same `{ images: [...] }` / `{ result: <url> }` shape the
+ * rest of the app (RunPod worker-comfyui, fal) already uses. */
+export async function getRunPodPublicJobStatus(jobId: string): Promise<RunPodPublicJobStatus> {
+  const { endpointId, requestId } = decodeRunPodPublicJobId(jobId);
+
+  const res = await fetch(`${RUNPOD_BASE_URL}/${endpointId}/status/${requestId}`, {
+    headers: authHeaders(),
+  });
+
+  // 2026-07-13 lesson learned the hard way with fal.ai's equivalent check
+  // (see the old src/libs/Fal.ts): throwing here turns a single transient
+  // HTTP hiccup into a hard 502 from /api/generate/status, which
+  // GenerateForm.tsx's pollStatus treats as a PERMANENT failure and stops
+  // polling — even though the job itself may still be perfectly healthy.
+  // Returning IN_PROGRESS instead lets the client's normal poll loop just
+  // try again in a few seconds; a genuinely dead job still terminates
+  // correctly via GenerateForm's own POLL_TIMEOUT_MS safety net.
+  if (!res.ok) {
+    return { id: jobId, status: 'IN_PROGRESS' };
+  }
+
+  const data = await res.json() as {
+    status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+    error?: string;
+    output?: { image_url?: string; video_url?: string; cost?: number };
+  };
+
+  if (data.status !== 'COMPLETED') {
+    return { id: jobId, status: data.status, error: data.error };
+  }
+
+  if (data.output?.image_url) {
+    return {
+      id: jobId,
+      status: 'COMPLETED',
+      output: {
+        images: [{ filename: `${requestId}.png`, type: 's3_url', data: data.output.image_url }],
+      },
+    };
+  }
+
+  if (data.output?.video_url) {
+    return { id: jobId, status: 'COMPLETED', output: { result: data.output.video_url } };
+  }
+
+  return { id: jobId, status: 'FAILED', error: 'RunPod public endpoint returned no image or video in the result.' };
+}
+
+/** `black-forest-labs-flux-1-dev` — text-to-image, Mid-tier engine. */
+export function buildRunPodFluxDevInput(params: {
+  prompt: string;
+  width?: number;
+  height?: number;
+  seed?: number;
+}) {
+  return {
+    prompt: params.prompt,
+    width: params.width ?? 1024,
+    height: params.height ?? 1024,
+    num_inference_steps: 28,
+    guidance: 7.5,
+    seed: params.seed ?? -1,
+    image_format: 'png',
+  };
+}
+
+/** `google-nano-banana-2-edit` — Top-tier engine. Requires at least one
+ * reference image (RunPod's Public Endpoint catalog only offers the "Edit"
+ * variant of Nano Banana 2, no pure text-to-image mode) — /api/generate's
+ * route falls back to buildRunPodFluxDevInput() when the user hasn't
+ * uploaded a reference image, per the 2026-07-14 decision to keep Top-tier
+ * usable either way rather than blocking generation outright. */
+export function buildRunPodNanoBanana2EditInput(params: {
+  prompt: string;
+  imageUrl: string;
+  resolution?: '1k' | '2k' | '4k';
+}) {
+  return {
+    images: [params.imageUrl],
+    prompt: params.prompt,
+    resolution: params.resolution ?? '1k',
+    output_format: 'png',
+  };
 }
 
 /**

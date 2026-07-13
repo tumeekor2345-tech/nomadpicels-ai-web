@@ -69,11 +69,18 @@ export function getPackage(id: string): CreditPackage | undefined {
 /**
  * "AI Image" tool engine ids — the user picks which backend generates their
  * image. `runpod` is the original self-hosted Flux Schnell (cheapest,
- * default). `fal_flux_dev` and `fal_nanobanana2` were added 2026-07-13,
- * both hosted on fal.ai (see src/libs/Fal.ts) — Flux.1 [dev] is a step up in
- * quality for a modest cost bump, Nano Banana 2 (Google Gemini 3.1 Flash
- * Image) costs the most but has meaningfully better identity/character
- * consistency, especially for reference-image generations.
+ * default, own dedicated worker-comfyui endpoint). `fal_flux_dev` and
+ * `fal_nanobanana2` were added 2026-07-13 hosted on fal.ai, then moved
+ * 2026-07-14 to RunPod Hub's own Public Endpoints (`black-forest-labs-flux-1-dev`
+ * / `google-nano-banana-2-edit` — see src/libs/RunPod.ts's "RunPod Hub Public
+ * Endpoints" section) after fal.ai's real per-image billing turned out to run
+ * 5-10x its advertised rate. The ids themselves were kept unchanged (not
+ * renamed to `runpod_flux_dev`/etc.) to avoid touching every file that
+ * references them. Flux.1 [dev] is a step up in quality for a modest cost
+ * bump; Nano Banana 2 (Google's model) costs the most but has meaningfully
+ * better identity/character consistency for reference-image generations —
+ * RunPod's Public Endpoint for it is Edit-only (no bare reference image ->
+ * falls back to the Flux Dev engine, see /api/generate/route.ts).
  */
 export type FluxEngineId = 'runpod' | 'fal_flux_dev' | 'fal_nanobanana2';
 
@@ -86,12 +93,16 @@ export const CREDIT_COST = {
 } as const;
 
 /**
- * Per-engine credit cost for the "AI Image" tool's 3-way selector (added
- * 2026-07-13). Priced against researched fal.ai rates and the lowest
- * per-credit value across CREDIT_PACKAGES (Business, ~70₮/credit) so margin
- * holds even for bulk-package buyers:
- *   - fal_flux_dev: ~90₮/image cost -> 2 credits (140₮ min revenue)
- *   - fal_nanobanana2: ~287₮/image cost (fal.ai $0.08 @ 1K) -> 6 credits (420₮ min revenue)
+ * Per-engine credit cost for the "AI Image" tool's 3-way selector. Priced
+ * against RunPod Hub's official Public Endpoint rates
+ * (docs.runpod.io/public-endpoints/reference) and the lowest per-credit
+ * value across CREDIT_PACKAGES (Business, ~70₮/credit) so margin holds even
+ * for bulk-package buyers:
+ *   - fal_flux_dev (RunPod `black-forest-labs-flux-1-dev`, $0.02/megapixel):
+ *     ~$0.021-0.047/image depending on aspect ratio -> 2 credits (140₮ min
+ *     revenue) still comfortably covers it.
+ *   - fal_nanobanana2 (RunPod `google-nano-banana-2-edit`, $0.0875 @ 1K):
+ *     -> 6 credits (420₮ min revenue).
  */
 export const FLUX_ENGINE_CREDIT_COST: Record<FluxEngineId, number> = {
   runpod: CREDIT_COST.flux,
@@ -100,13 +111,14 @@ export const FLUX_ENGINE_CREDIT_COST: Record<FluxEngineId, number> = {
 };
 
 /**
- * Wan 2.7 (fal.ai) is billed at a flat $0.10/second (~358₮/s) with no
- * resolution tiers — unlike the old self-hosted RunPod Wan 2.2 (near-free
- * GPU-second cost, hence the old flat 8-credit price), so credit cost must
- * scale with the user-selected duration or longer videos lose money.
- * Calibrated at 32 credits for a 5-second video (~6.4 credits/second),
- * confirmed with the user on 2026-07-13, then scaled linearly and rounded
- * up for any other duration (8/10/15s).
+ * RunPod Hub's public `wan-2-2-i2v-720` endpoint (see src/libs/RunPod.ts) is
+ * billed at a flat $0.06/second ($0.30 for 5s, scaling linearly — confirmed
+ * against docs.runpod.io/public-endpoints/models/wan-2-2-i2v), cheaper than
+ * the brief fal.ai Wan 2.7 detour's $0.10/s. Credit cost was calibrated
+ * against that higher fal.ai rate (32 credits / 5s, confirmed with the user
+ * 2026-07-13) and kept unchanged after moving back to RunPod 2026-07-14 —
+ * real margin is now better than originally calculated, not worse, so there
+ * was no need to touch user-facing pricing.
  */
 const WAN_CREDITS_PER_SECOND = 32 / 5;
 

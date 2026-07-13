@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { getFalJobStatus, isFalJobId } from '@/libs/Fal';
-import { getRunPodJobStatus } from '@/libs/RunPod';
+import { getRunPodJobStatus, getRunPodPublicJobStatus, isRunPodPublicJobId } from '@/libs/RunPod';
 import { generationSchema } from '@/models/Schema';
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED', 'CANCELLED', 'TIMED_OUT']);
@@ -54,13 +54,21 @@ export async function GET(request: Request) {
   }
 
   try {
-    // fal.ai jobs (AI Image engine=fal_flux_dev/fal_nanobanana2, or any Wan
-    // video — see src/libs/Fal.ts) encode provider+model in the jobId
-    // itself (`fal::{modelId}::{requestId}`), so they never hit RunPod's
-    // status endpoint at all.
+    // Three possible job id shapes now:
+    // - `fal::{modelId}::{requestId}` — fal.ai jobs. Fully retired as of
+    //   2026-07-14 (see src/libs/RunPod.ts), but old DB rows from before the
+    //   switch still have this shape, so the branch stays so their history
+    //   entries keep resolving instead of erroring forever.
+    // - `rpub::{endpointId}::{requestId}` — RunPod Hub Public Endpoint jobs
+    //   (Mid-tier Flux Dev, Top-tier Nano Banana 2, Wan video — see
+    //   src/libs/RunPod.ts's "RunPod Hub Public Endpoints" section).
+    // - anything else — the dedicated worker-comfyui/faceswap endpoints
+    //   (Standard engine, Photo Restore, Image Effect).
     const status = isFalJobId(jobId)
       ? await getFalJobStatus(jobId)
-      : await getRunPodJobStatus(toRunPodKind(row.kind), jobId);
+      : isRunPodPublicJobId(jobId)
+        ? await getRunPodPublicJobStatus(jobId)
+        : await getRunPodJobStatus(toRunPodKind(row.kind), jobId);
 
     if (TERMINAL_STATUSES.has(status.status) && row.status !== status.status) {
       await db.update(generationSchema)
