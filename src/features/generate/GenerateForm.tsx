@@ -288,7 +288,7 @@ export const GenerateForm = (props: {
       return;
     }
 
-    const res = await fetch(`/api/generate/status?kind=${jobKind}&jobId=${jobId}`);
+    const res = await fetch(`/api/generate/status?kind=${jobKind}&jobId=${encodeURIComponent(jobId)}`);
     const data: JobStatus = await res.json();
 
     if (!res.ok) {

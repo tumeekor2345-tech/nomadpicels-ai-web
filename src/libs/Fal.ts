@@ -149,8 +149,20 @@ export async function getFalJobStatus(jobId: string): Promise<FalJobStatus> {
 
   const statusRes = await fetchFalQueue(`${FAL_QUEUE_BASE_URL}/${modelId}/requests/${requestId}/status`);
 
+  // 2026-07-13 bug fix: this used to `throw` on a non-ok status check, which
+  // /api/generate/status/route.ts's catch-block turns into an HTTP 502 —
+  // and GenerateForm.tsx's pollStatus treats ANY non-ok response as a
+  // permanent, terminal failure (stops polling, shows "Generation failed").
+  // But a single failed HTTP call to fal's own status endpoint is often just
+  // a transient blip (rate limit, brief 5xx) — NOT proof the generation
+  // itself failed. Confirmed live 2026-07-13: a job the UI reported as
+  // "Generation failed" was still sitting healthy as IN_QUEUE in fal's queue
+  // and in our DB seconds later. Treating a transient check failure as
+  // IN_PROGRESS lets the client's normal 3s poll loop simply try again
+  // instead of giving up — a genuinely dead job still terminates correctly
+  // via GenerateForm's own POLL_TIMEOUT_MS (10 min) safety net.
   if (!statusRes.ok) {
-    throw new Error(`fal.ai status check failed (${modelId}): ${statusRes.status} ${await statusRes.text()}`);
+    return { id: jobId, status: 'IN_PROGRESS' };
   }
 
   const statusData = await statusRes.json() as {
@@ -177,8 +189,15 @@ export async function getFalJobStatus(jobId: string): Promise<FalJobStatus> {
 
   const resultRes = await fetchFalQueue(`${FAL_QUEUE_BASE_URL}/${modelId}/requests/${requestId}`);
 
+  // Same reasoning as the statusRes check above: fal's /status endpoint can
+  // report "COMPLETED" a beat before the /requests/{id} result endpoint has
+  // the artifact ready (an eventual-consistency race on fal's side), which
+  // used to `throw` here and get surfaced to the user as a false, permanent
+  // "Generation failed" while the job was actually still fine. Returning
+  // IN_PROGRESS instead lets the next poll (3s later) pick up the real
+  // result once it's ready, rather than killing the poll loop on a blip.
   if (!resultRes.ok) {
-    throw new Error(`fal.ai result fetch failed (${modelId}): ${resultRes.status} ${await resultRes.text()}`);
+    return { id: jobId, status: 'IN_PROGRESS' };
   }
 
   const result = await resultRes.json() as {
