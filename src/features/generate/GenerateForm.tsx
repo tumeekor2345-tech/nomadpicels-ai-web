@@ -6,6 +6,7 @@ import type {
   ReferenceInfluence,
   StyleId,
 } from '@/libs/ImagePresets';
+import type { FluxEngineId } from '@/libs/Pricing';
 import { X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -24,14 +25,20 @@ import { cn } from '@/utils/Helpers';
 
 type Kind = 'flux' | 'wan';
 
-// The Wan 2.2 Hub endpoint only accepts these two fixed sizes (confirmed in
-// src/libs/RunPod.ts's buildWanInput `size` type) — no other aspect ratios
-// are actually supported by this endpoint, unlike Flux's 5 ratio options.
+// Kept to these two fixed sizes for now (matches what the old RunPod Wan 2.2
+// Hub endpoint supported) — fal.ai's Wan 2.7 (src/libs/Fal.ts buildFalWanInput)
+// maps them to aspect_ratio '16:9'/'9:16', no other ratios wired up yet.
 type WanAspectRatioId = '16:9' | '9:16';
 const WAN_SIZES: Array<{ id: WanAspectRatioId; size: '1280*720' | '720*1280' }> = [
   { id: '16:9', size: '1280*720' },
   { id: '9:16', size: '720*1280' },
 ];
+
+// 3-way "AI Image" engine selector, added 2026-07-13 — see
+// src/libs/Pricing.ts (FLUX_ENGINE_CREDIT_COST) for the credit cost behind
+// each option and src/libs/Fal.ts for how fal_flux_dev/fal_nanobanana2
+// actually get called server-side.
+const FLUX_ENGINES: FluxEngineId[] = ['runpod', 'fal_flux_dev', 'fal_nanobanana2'];
 
 type JobStatus = {
   id: string;
@@ -82,6 +89,9 @@ export const GenerateForm = (props: {
     resultEmpty: string;
     costNoteImage: string;
     costNoteVideo: string;
+    engineLabel: string;
+    engineNames: Record<FluxEngineId, string>;
+    engineHints: Record<FluxEngineId, string>;
     styleLabel: string;
     styleNames: Record<StyleId, string>;
     aspectRatioLabel: string;
@@ -136,6 +146,7 @@ export const GenerateForm = (props: {
   // gives users a meaningfully better result out of the box; they can still
   // switch to "Байхгүй" or any other style manually.
   const [style, setStyle] = useState<StyleId>('photorealistic');
+  const [engine, setEngine] = useState<FluxEngineId>('runpod');
   const [lens, setLens] = useState<LensId>('none');
   const [aspectRatio, setAspectRatio] = useState<AspectRatioId>('1:1');
   const [referenceImage, setReferenceImage] = useState<{ dataUrl: string; base64: string } | null>(null);
@@ -312,6 +323,7 @@ export const GenerateForm = (props: {
     const body = kind === 'flux'
       ? {
           kind,
+          engine,
           prompt: buildFinalPrompt(prompt, style, lens),
           finalPromptOverride: finalPrompt,
           width: ASPECT_RATIOS.find(r => r.id === aspectRatio)?.width,
@@ -749,6 +761,28 @@ export const GenerateForm = (props: {
 
           {kind === 'flux' && (
             <>
+              <div className="flex flex-col gap-1.5">
+                <Label>{props.labels.engineLabel}</Label>
+                <div className="flex flex-col gap-2">
+                  {FLUX_ENGINES.map(engineId => (
+                    <button
+                      key={engineId}
+                      type="button"
+                      onClick={() => setEngine(engineId)}
+                      className={cn(
+                        'rounded-md border px-3 py-2 text-left text-sm',
+                        engine === engineId
+                          ? 'border-primary bg-primary/10'
+                          : 'border-input bg-transparent',
+                      )}
+                    >
+                      <div className="font-medium">{props.labels.engineNames[engineId]}</div>
+                      <div className="text-xs text-muted-foreground">{props.labels.engineHints[engineId]}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="flex flex-col gap-1.5">
                 <Label>{props.labels.styleLabel}</Label>
                 <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">

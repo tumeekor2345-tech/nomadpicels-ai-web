@@ -42,6 +42,17 @@ export const Env = createEnv({
     // /dashboard/admin. Optional — src/libs/Admin.ts also has a hardcoded
     // fallback owner email, so the admin page works even before this is set.
     ADMIN_EMAILS: z.string().optional(),
+
+    // --- fal.ai (managed API host: Flux [dev], Nano Banana 2, Wan 2.7) ---
+    // Added 2026-07-13 — the "AI Image" tool now lets users pick between the
+    // self-hosted RunPod Flux Schnell engine (still the default, cheapest)
+    // and two fal.ai-hosted engines (Flux.1 [dev] and Nano Banana 2), and
+    // Wan video generation moved entirely to fal.ai's Wan 2.7. See
+    // src/libs/Fal.ts. Get a key at https://fal.ai/dashboard/keys and set it
+    // in Vercel's Environment Variables — optional here so `npm run dev`
+    // still boots without it (calling Fal.ts functions without it throws a
+    // clear error, same pattern as RUNPOD_API_KEY above).
+    FAL_KEY: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().optional(),
@@ -66,6 +77,7 @@ export const Env = createEnv({
     QPAY_CLIENT_SECRET: process.env.QPAY_CLIENT_SECRET,
     QPAY_INVOICE_CODE: process.env.QPAY_INVOICE_CODE,
     ADMIN_EMAILS: process.env.ADMIN_EMAILS,
+    FAL_KEY: process.env.FAL_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,

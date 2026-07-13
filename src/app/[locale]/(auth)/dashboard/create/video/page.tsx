@@ -42,6 +42,17 @@ export default async function CreateVideoPage(props: {
           resultEmpty: t('result_empty'),
           costNoteImage: t('cost_note_image'),
           costNoteVideo: t('cost_note_video'),
+          engineLabel: t('engine_label'),
+          engineNames: {
+            runpod: t('engine_runpod'),
+            fal_flux_dev: t('engine_fal_flux_dev'),
+            fal_nanobanana2: t('engine_fal_nanobanana2'),
+          },
+          engineHints: {
+            runpod: t('engine_runpod_hint'),
+            fal_flux_dev: t('engine_fal_flux_dev_hint'),
+            fal_nanobanana2: t('engine_fal_nanobanana2_hint'),
+          },
           styleLabel: t('style_label'),
           styleNames: {
             'none': t('style_none'),

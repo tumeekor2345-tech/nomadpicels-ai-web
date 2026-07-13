@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
+import { getFalJobStatus, isFalJobId } from '@/libs/Fal';
 import { getRunPodJobStatus } from '@/libs/RunPod';
 import { generationSchema } from '@/models/Schema';
 
@@ -53,7 +54,13 @@ export async function GET(request: Request) {
   }
 
   try {
-    const status = await getRunPodJobStatus(toRunPodKind(row.kind), jobId);
+    // fal.ai jobs (AI Image engine=fal_flux_dev/fal_nanobanana2, or any Wan
+    // video — see src/libs/Fal.ts) encode provider+model in the jobId
+    // itself (`fal::{modelId}::{requestId}`), so they never hit RunPod's
+    // status endpoint at all.
+    const status = isFalJobId(jobId)
+      ? await getFalJobStatus(jobId)
+      : await getRunPodJobStatus(toRunPodKind(row.kind), jobId);
 
     if (TERMINAL_STATUSES.has(status.status) && row.status !== status.status) {
       await db.update(generationSchema)

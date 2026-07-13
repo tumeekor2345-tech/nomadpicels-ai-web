@@ -4,9 +4,18 @@ import path from 'node:path';
 import { auth } from '@clerk/nextjs/server';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import type { FluxEngineId } from '@/libs/Pricing';
 import { isAdminUser } from '@/libs/Admin';
 import { isPromptBlocked } from '@/libs/ContentModeration';
 import { db } from '@/libs/DB';
+import {
+  buildFalFluxDevImg2ImgInput,
+  buildFalFluxDevInput,
+  buildFalNanoBanana2EditInput,
+  buildFalNanoBanana2Input,
+  buildFalWanInput,
+  submitFalJob,
+} from '@/libs/Fal';
 import { DEFAULT_FACE_SWAP_STYLE, FACE_SWAP_STYLE_PROMPTS, isFaceSwapStyleId } from '@/libs/FaceSwapStyles';
 import {
   buildImageEffectPrompt,
@@ -15,16 +24,21 @@ import {
   EFFECT_PRESETS,
   STYLE_PRESETS,
 } from '@/libs/ImagePresets';
-import { CREDIT_COST } from '@/libs/Pricing';
+import { CREDIT_COST, FLUX_ENGINE_CREDIT_COST, wanCreditCost } from '@/libs/Pricing';
 import { buildFinalModelPrompt } from '@/libs/PromptPipeline';
 import {
   buildFaceSwapInput,
   buildFluxImg2ImgInput,
   buildFluxInput,
-  buildWanInput,
   submitRunPodJob,
 } from '@/libs/RunPod';
 import { creditBalanceSchema, generationSchema } from '@/models/Schema';
+
+// "AI Image" tool engine selector, added 2026-07-13 — see src/libs/Pricing.ts
+// (FLUX_ENGINE_CREDIT_COST) and src/libs/Fal.ts. Defaults to 'runpod' (the
+// original self-hosted engine) so old clients that don't send `engine` keep
+// working unchanged.
+const VALID_FLUX_ENGINES: FluxEngineId[] = ['runpod', 'fal_flux_dev', 'fal_nanobanana2'];
 
 /**
  * Starts a generation job (Flux image, Wan 2.2 video, or a one-click "Tools"
@@ -200,8 +214,17 @@ export async function POST(request: Request) {
     && typeof body.referenceImageBase64 === 'string'
     && body.referenceImageBase64.length > 0;
 
-  const fluxWorkflow = (body.kind === 'flux' && !usingFluxReference) ? loadFluxWorkflow() : null;
-  if (body.kind === 'flux' && !usingFluxReference && !fluxWorkflow) {
+  const fluxEngine: FluxEngineId = body.kind === 'flux' && VALID_FLUX_ENGINES.includes(body.engine)
+    ? body.engine
+    : 'runpod';
+  const usingRunPodFlux = body.kind === 'flux' && fluxEngine === 'runpod';
+
+  // Fal-hosted engines (fal_flux_dev / fal_nanobanana2) don't use ComfyUI
+  // workflow.json graphs at all — only the 'runpod' engine, and
+  // photo_restore/image_effect (still RunPod-only for now — see Task #136),
+  // need these loaded.
+  const fluxWorkflow = (usingRunPodFlux && !usingFluxReference) ? loadFluxWorkflow() : null;
+  if (usingRunPodFlux && !usingFluxReference && !fluxWorkflow) {
     return NextResponse.json(
       {
         error: 'flux_workflow_not_configured',
@@ -214,7 +237,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const needsImg2ImgWorkflow = body.kind === 'photo_restore' || body.kind === 'image_effect' || usingFluxReference;
+  const needsImg2ImgWorkflow = body.kind === 'photo_restore' || body.kind === 'image_effect' || (usingFluxReference && usingRunPodFlux);
   const img2imgWorkflow = needsImg2ImgWorkflow ? loadFluxImg2ImgWorkflow() : null;
   if (needsImg2ImgWorkflow && !img2imgWorkflow) {
     return NextResponse.json(
@@ -234,7 +257,11 @@ export async function POST(request: Request) {
   // Free users (no credits, or insufficient balance): fall back to the
   // existing anti-abuse daily limit.
   const isAdmin = await isAdminUser(userId);
-  const creditCost = CREDIT_COST[body.kind as keyof typeof CREDIT_COST];
+  const creditCost = body.kind === 'flux'
+    ? FLUX_ENGINE_CREDIT_COST[fluxEngine]
+    : body.kind === 'wan'
+      ? wanCreditCost(typeof body.durationSeconds === 'number' ? body.durationSeconds : 5)
+      : CREDIT_COST[body.kind as keyof typeof CREDIT_COST];
   const paidWithCredits = isAdmin ? false : await trySpendCredits(userId, creditCost);
 
   if (!isAdmin && !paidWithCredits) {
@@ -252,21 +279,51 @@ export async function POST(request: Request) {
 
   try {
     if (body.kind === 'flux') {
-      const input = usingFluxReference
-        ? buildFluxImg2ImgInput(img2imgWorkflow!, {
-            prompt: modelPrompt,
-            imageBase64: body.referenceImageBase64,
-            denoise: typeof body.denoise === 'number' ? body.denoise : 0.55,
-            seed: body.seed,
-          })
-        : buildFluxInput(fluxWorkflow!, {
-            prompt: modelPrompt,
-            width: body.width,
-            height: body.height,
-            seed: body.seed,
-          });
+      // 3-way engine selector (added 2026-07-13) — 'runpod' keeps the
+      // original self-hosted path unchanged; 'fal_flux_dev' and
+      // 'fal_nanobanana2' route to fal.ai instead (see src/libs/Fal.ts).
+      // referenceImageBase64 arrives as bare base64 (no data: prefix — see
+      // GenerateForm.tsx's handleReferenceFileChange), so fal's image_url
+      // param needs a data: URI built here.
+      const referenceDataUrl = usingFluxReference
+        ? `data:image/png;base64,${body.referenceImageBase64}`
+        : null;
 
-      const job = await submitRunPodJob('flux', input);
+      const job = fluxEngine === 'fal_flux_dev'
+        ? await submitFalJob(
+            referenceDataUrl ? 'fal-ai/flux/dev/image-to-image' : 'fal-ai/flux/dev',
+            referenceDataUrl
+              ? buildFalFluxDevImg2ImgInput({
+                  prompt: modelPrompt,
+                  imageBase64DataUrl: referenceDataUrl,
+                  strength: typeof body.denoise === 'number' ? body.denoise : 0.55,
+                  seed: body.seed,
+                })
+              : buildFalFluxDevInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
+          )
+        : fluxEngine === 'fal_nanobanana2'
+          ? await submitFalJob(
+              referenceDataUrl ? 'fal-ai/nano-banana-2/edit' : 'fal-ai/nano-banana-2',
+              referenceDataUrl
+                ? buildFalNanoBanana2EditInput({ prompt: modelPrompt, imageBase64DataUrl: referenceDataUrl })
+                : buildFalNanoBanana2Input({ prompt: modelPrompt }),
+            )
+          : await submitRunPodJob(
+              'flux',
+              usingFluxReference
+                ? buildFluxImg2ImgInput(img2imgWorkflow!, {
+                    prompt: modelPrompt,
+                    imageBase64: body.referenceImageBase64,
+                    denoise: typeof body.denoise === 'number' ? body.denoise : 0.55,
+                    seed: body.seed,
+                  })
+                : buildFluxInput(fluxWorkflow!, {
+                    prompt: modelPrompt,
+                    width: body.width,
+                    height: body.height,
+                    seed: body.seed,
+                  }),
+            );
 
       const [row] = await db.insert(generationSchema).values({
         ownerId: userId,
@@ -281,7 +338,12 @@ export async function POST(request: Request) {
     }
 
     if (body.kind === 'wan') {
-      const input = buildWanInput({
+      // Migrated 2026-07-13: Wan video now runs entirely on fal.ai's Wan 2.7
+      // (fal-ai/wan/v2.7/image-to-video) — no engine choice here, unlike the
+      // "AI Image" tool, since RunPod's Wan 2.2 endpoint is being retired.
+      // See wanCreditCost() in src/libs/Pricing.ts for why the credit cost
+      // scales with durationSeconds now instead of a flat 8.
+      const input = buildFalWanInput({
         prompt: modelPrompt,
         imageUrl: body.imageUrl,
         negativePrompt: body.negativePrompt,
@@ -290,7 +352,7 @@ export async function POST(request: Request) {
         seed: body.seed,
       });
 
-      const job = await submitRunPodJob('wan', input);
+      const job = await submitFalJob('fal-ai/wan/v2.7/image-to-video', input);
 
       const [row] = await db.insert(generationSchema).values({
         ownerId: userId,

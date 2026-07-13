@@ -29,25 +29,16 @@ import { PresetPicker } from './PresetPicker';
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
-type StrengthId = 'light' | 'medium' | 'strong';
-
-// Effect "strength" here means how much the image is allowed to change —
-// unlike the AI Image panel's "reference influence" (which is inverted:
-// high influence = low denoise), a stronger effect should mean a *higher*
-// denoise, so this is its own, unrelated-to-ImagePresets map.
-//
-// Raised 2026-07-10 (round 2): even the first bump (0.5/0.7/0.88) wasn't
-// enough — user tested "Хүчтэй" (strong, 0.88) and still called the change
-// too small. Pushing further so "Хүчтэй" is now close to a full repaint
-// (0.97 — just short of 1.0/pure txt2img, to keep a thread of continuity
-// with the uploaded photo's framing), "Дунд" now sits where "Хүчтэй" used
-// to be, and "Хөнгөн" moves up to what used to be "Дунд" so the whole scale
-// shifts toward "more transformed" as requested.
-const STRENGTH_DENOISE: Record<StrengthId, number> = {
-  light: 0.7,
-  medium: 0.85,
-  strong: 0.97,
-};
+// Effect "strength" used to be a user-facing light/medium/strong selector,
+// but live testing on 2026-07-10 showed "medium" (0.78) alone already
+// nailed the balance — noticeably transformed while still recognizably the
+// uploaded photo — and the "strong" tier (pushed as high as 0.97 at one
+// point) actually broke things by losing the photo entirely. Per user
+// feedback ("хүчний тохируулга хэрэгтэй юу" — is the strength picker even
+// needed), removed the selector and hardcoded this single value to
+// simplify the tool. If per-photo tuning is ever needed again, reintroduce
+// a StrengthId-keyed map here rather than a single constant.
+const DENOISE = 0.78;
 
 // Uploaded photos are downscaled client-side before being sent as a data URI
 // — keeps the request body well under Vercel's serverless body-size limit
@@ -125,14 +116,6 @@ function applyColorFilter(pngDataUrl: string, filter: string): Promise<string> {
   });
 }
 
-const selectClassName = `
-  flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3
-  py-1 text-base shadow-xs outline-none
-  focus-visible:border-ring focus-visible:ring-[3px]
-  focus-visible:ring-ring/50
-  md:text-sm
-`;
-
 type Labels = {
   styleLabel: string;
   styleLabels: Record<StyleId, string>;
@@ -142,10 +125,6 @@ type Labels = {
   effectLabels: Record<EffectId, string>;
   angleLabel: string;
   angleLabels: Record<CameraAngleId, string>;
-  strengthLabel: string;
-  strengthLight: string;
-  strengthMedium: string;
-  strengthStrong: string;
   imageUrlLabel: string;
   imageUrlPlaceholder: string;
   imageUploadLabel: string;
@@ -174,7 +153,6 @@ export const ImageEffectWorkspace = (props: { labels: Labels }) => {
   const [colorPaletteId, setColorPaletteId] = useState<ColorPaletteId>('none');
   const [effectId, setEffectId] = useState<EffectId>('none');
   const [cameraAngleId, setCameraAngleId] = useState<CameraAngleId>('none');
-  const [strength, setStrength] = useState<StrengthId>('medium');
   const [submitting, setSubmitting] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -245,7 +223,7 @@ export const ImageEffectWorkspace = (props: { labels: Labels }) => {
         colorPaletteId,
         effectId,
         cameraAngleId,
-        denoise: STRENGTH_DENOISE[strength],
+        denoise: DENOISE,
       }),
     });
     const data = await res.json();
@@ -376,20 +354,6 @@ export const ImageEffectWorkspace = (props: { labels: Labels }) => {
           value={cameraAngleId}
           onChange={setCameraAngleId}
         />
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="image-effect-strength">{labels.strengthLabel}</Label>
-          <select
-            id="image-effect-strength"
-            className={selectClassName}
-            value={strength}
-            onChange={e => setStrength(e.target.value as StrengthId)}
-          >
-            <option value="light">{labels.strengthLight}</option>
-            <option value="medium">{labels.strengthMedium}</option>
-            <option value="strong">{labels.strengthStrong}</option>
-          </select>
-        </div>
 
         <Button type="button" disabled={submitting || !imageUrl} onClick={handleRun}>
           {submitting ? labels.running : labels.run}
