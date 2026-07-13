@@ -252,14 +252,29 @@ export function buildFluxInput(
   // testing showed generations drifting away from the requested subject
   // (e.g. "Mongolian woman wearing a deel" produced unrelated clothing/
   // architecture) and roughly doubled generation time without a clear
-  // quality win. Reverted back to a single base pass (steps bumped 12 -> 20
-  // as a partial substitute for the detail the hi-res pass was adding). If
-  // hi-res fix is revisited later, see git history around this date for the
-  // node graph (LatentUpscaleBy "40" fed by the base SamplerCustomAdvanced
-  // "13", then a second RandomNoise/BasicScheduler/SamplerCustomAdvanced at
-  // denoise ~0.45) and consider debugging the subject-drift issue first
-  // (possibly the composition-reinforcement prompt text competing with the
-  // hi-res pass's own partial re-denoising) rather than re-adding blind.
+  // quality win. At the time this was blamed on the hi-res pass itself and
+  // reverted back to a single base pass (steps bumped 12 -> 20 "as a partial
+  // substitute for the detail the hi-res pass was adding"). If hi-res fix is
+  // revisited later, see git history around this date for the node graph
+  // (LatentUpscaleBy "40" fed by the base SamplerCustomAdvanced "13", then a
+  // second RandomNoise/BasicScheduler/SamplerCustomAdvanced at denoise ~0.45).
+  //
+  // STEPS FIX — 2026-07-13: the real cause of that subject-drift symptom was
+  // almost certainly the step count, not the hi-res pass. flux1-schnell is a
+  // timestep-distilled model — Black Forest Labs' own docs/default config
+  // recommend 1-4 steps (up to ~8 at most); using more doesn't improve
+  // quality and pushes sampling outside the regime the distillation assumed,
+  // which can make the model detach from the prompt conditioning entirely and
+  // generate confident-looking but unrelated photorealistic content (live
+  // reproduced 2026-07-13: prompt "iphone 17promax" at steps=20 returned an
+  // unrelated red building, then an unrelated motorcycle — same seed-driven
+  // "different every time" pattern the hi-res-era bug reports described).
+  // Dropped steps 20 -> 8 (the user's choice, staying at the very top of
+  // schnell's documented 1-4-steps-typical/8-max range rather than the
+  // stricter 4-step default) to get back inside schnell's actual
+  // distillation target; flux-schnell-img2img.json's steps needed the same
+  // fix. Re-test subject fidelity after this change before ever bumping
+  // steps up again.
   const patched = patchWorkflow(workflow, {
     [FLUX_PROMPT_NODE_ID]: { text: params.prompt },
     [FLUX_SIZE_NODE_ID]: { width: params.width ?? 1024, height: params.height ?? 1024 },
