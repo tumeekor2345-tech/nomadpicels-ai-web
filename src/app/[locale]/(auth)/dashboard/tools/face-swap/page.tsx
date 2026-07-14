@@ -45,6 +45,7 @@ export default async function FaceSwapPage(props: {
           uploadButton: t('face_swap_upload_button'),
           uploadRemove: t('face_swap_upload_remove'),
           uploadOrUrlDivider: t('face_swap_upload_or_url'),
+          uploadFailed: t('face_swap_upload_failed'),
           run: t('run'),
           running: t('running'),
           queued: t('queued'),

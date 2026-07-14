@@ -23,15 +23,20 @@ type Labels = {
   // (imageUrlLabel above), which meant a user had to already have their
   // photo hosted somewhere public before they could use it at all. Per the
   // user's feedback ("гол нь би зургаа оруулж болохгүй байна" — the whole
-  // point is I can't upload my own photo), added a real file-upload button
-  // (same base64 data-URL pattern as GenerateForm.tsx's reference-image
-  // upload). Uploading a file fills imageUrl with a data: URI under the
-  // hood — no server change needed, buildFaceSwapInput() just forwards
-  // whatever string it's given as `image_url` to the worker.
+  // point is I can't upload my own photo), added a real file-upload button.
+  // First attempt sent the file as an embedded base64 data: URI straight
+  // through as `image_url` (mirroring GenerateForm.tsx's reference-image
+  // upload) — but RunPod's comfyui-faceswap-sdxl endpoint sits behind a WAF
+  // that blocks requests carrying a large embedded data: URI ("[BLOCKED:
+  // Cookie/query string data]"), so jobs completed with no image. Fixed by
+  // POSTing the file to /api/uploads first (stores it, returns a real
+  // https:// URL on our own domain), then sending THAT URL as imageUrl —
+  // see src/app/api/uploads/route.ts.
   uploadLabel: string;
   uploadButton: string;
   uploadRemove: string;
   uploadOrUrlDivider: string;
+  uploadFailed: string;
   run: string;
   running: string;
   queued: string;
@@ -49,6 +54,7 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
   const [style, setStyle] = useState<FaceSwapStyleId>(DEFAULT_FACE_SWAP_STYLE);
   const [imageUrl, setImageUrl] = useState('');
   const [uploadedPreview, setUploadedPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
@@ -98,17 +104,36 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) {
       return;
     }
+
+    setErrorText(null);
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const dataUrl = reader.result as string;
       setUploadedPreview(dataUrl);
-      setImageUrl(dataUrl);
+      setUploading(true);
+      try {
+        const res = await fetch('/api/uploads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataUrl }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.url) {
+          throw new Error(data.error ?? 'upload failed');
+        }
+        setImageUrl(data.url);
+      } catch {
+        setErrorText(labels.uploadFailed);
+        setUploadedPreview(null);
+      } finally {
+        setUploading(false);
+      }
     };
     reader.readAsDataURL(file);
-    e.target.value = '';
   };
 
   const clearUpload = () => {
@@ -199,18 +224,29 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
                     alt=""
                     className="h-28 w-28 rounded-md object-cover"
                   />
-                  <button
-                    type="button"
-                    onClick={clearUpload}
-                    aria-label={labels.uploadRemove}
-                    className="
-                      absolute -right-2 -top-2 flex size-6 items-center
-                      justify-center rounded-full bg-destructive
-                      text-destructive-foreground
+                  {!uploading && (
+                    <button
+                      type="button"
+                      onClick={clearUpload}
+                      aria-label={labels.uploadRemove}
+                      className="
+                        absolute -right-2 -top-2 flex size-6 items-center
+                        justify-center rounded-full bg-destructive
+                        text-destructive-foreground
+                      "
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  )}
+                  {uploading && (
+                    <div className="
+                      absolute inset-0 flex items-center justify-center
+                      rounded-md bg-black/40 text-[10px] text-white
                     "
-                  >
-                    <X className="size-3.5" />
-                  </button>
+                    >
+                      ...
+                    </div>
+                  )}
                 </div>
               )
             : (
@@ -245,7 +281,7 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
           </div>
         )}
 
-        <Button type="button" disabled={submitting || !imageUrl} onClick={handleRun}>
+        <Button type="button" disabled={submitting || uploading || !imageUrl} onClick={handleRun}>
           {submitting ? labels.running : labels.run}
         </Button>
 

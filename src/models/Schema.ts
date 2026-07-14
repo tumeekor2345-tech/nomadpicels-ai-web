@@ -61,6 +61,28 @@ export const creditBalanceSchema = pgTable('credit_balance', {
     .notNull(),
 });
 
+// Short-lived storage for user-uploaded images that a RunPod worker needs
+// to fetch over a real HTTPS URL (not embedded base64) — e.g. the Face
+// Swap tool's `image_url` field. RunPod's comfyui-faceswap-sdxl endpoint
+// sits behind a WAF that blocks requests carrying a large embedded
+// data:-URI (observed 2026-07-15: "[BLOCKED: Cookie/query string data]"),
+// so uploaded photos are POSTed to /api/uploads first, stored here, and
+// served back out via GET /api/uploads/[token] as a plain image response
+// that RunPod can fetch like any other public image URL. `token` is a
+// random UUID (not the row id) so the URL isn't guessable. No auth is
+// required on the GET route since RunPod's server can't send our cookies —
+// unguessable token is the only protection, same trade-off as any
+// anonymous file-hosting link.
+// NOTE: rows are never cleaned up automatically yet — fine at current
+// volume, but worth adding a scheduled delete-older-than-24h job later.
+export const tempUploadSchema = pgTable('temp_upload', {
+  token: text('token').primaryKey(),
+  ownerId: text('owner_id').notNull(), // Clerk user id
+  contentType: text('content_type').notNull(),
+  data: text('data').notNull(), // raw bytes, base64-encoded
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
 // One row per credit-package purchase attempt. Created as 'PENDING' the
 // moment we call QPay's create-invoice endpoint; flipped to 'PAID' by the
 // /api/webhooks/qpay callback route once QPay confirms the invoice was

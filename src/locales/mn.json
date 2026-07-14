@@ -260,6 +260,7 @@
     "face_swap_upload_button": "Зураг оруулах",
     "face_swap_upload_remove": "Устгах",
     "face_swap_upload_or_url": "эсвэл URL оруулах",
+    "face_swap_upload_failed": "Зураг оруулахад алдаа гарлаа. Дахин оролдоно уу.",
     "image_effect_title": "Зургийн эффект",
     "image_effect_description": "Байршуулсан зурган дээрээ хэв маяг, өнгө, эффект, камерын өнцөг тохируулж шинэчилнэ",
     "image_effect_style_label": "Хэв маяг",

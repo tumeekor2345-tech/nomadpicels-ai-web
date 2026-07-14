@@ -260,6 +260,7 @@
     "face_swap_upload_button": "Upload image",
     "face_swap_upload_remove": "Remove",
     "face_swap_upload_or_url": "or enter a URL",
+    "face_swap_upload_failed": "Failed to upload the image. Please try again.",
     "image_effect_title": "Image Effect",
     "image_effect_description": "Restyle your uploaded photo with a chosen style, color palette, effect, and camera angle",
     "image_effect_style_label": "Style",
