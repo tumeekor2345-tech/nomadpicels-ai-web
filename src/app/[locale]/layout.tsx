@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from 'next';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
 import { Noto_Sans } from 'next/font/google';
@@ -69,6 +71,8 @@ export default async function RootLayout(props: {
         <NextIntlClientProvider>
           {props.children}
         </NextIntlClientProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
