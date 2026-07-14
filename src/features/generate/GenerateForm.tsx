@@ -35,11 +35,11 @@ const WAN_SIZES: Array<{ id: WanAspectRatioId; size: '1280*720' | '720*1280' }> 
   { id: '9:16', size: '720*1280' },
 ];
 
-// 3-way "AI Image" engine selector, added 2026-07-13 — see
-// src/libs/Pricing.ts (FLUX_ENGINE_CREDIT_COST) for the credit cost behind
-// each option and src/libs/Fal.ts for how fal_flux_dev/fal_nanobanana2
-// actually get called server-side.
-const FLUX_ENGINES: FluxEngineId[] = ['runpod', 'fal_flux_dev', 'fal_nanobanana2'];
+// "AI Image" engine selector — started as a 3-way choice added 2026-07-13,
+// extended to 5 on 2026-07-15 (qwen_image, wan_t2i) — see src/libs/Pricing.ts
+// (FLUX_ENGINE_CREDIT_COST) for the credit cost behind each option and
+// src/libs/RunPod.ts for how each one actually gets called server-side.
+const FLUX_ENGINES: FluxEngineId[] = ['runpod', 'fal_flux_dev', 'fal_nanobanana2', 'qwen_image', 'wan_t2i'];
 
 type JobStatus = {
   id: string;

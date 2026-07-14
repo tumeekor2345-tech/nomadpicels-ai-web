@@ -68,21 +68,35 @@ export function getPackage(id: string): CreditPackage | undefined {
 
 /**
  * "AI Image" tool engine ids — the user picks which backend generates their
- * image. `runpod` is the original self-hosted Flux Schnell (cheapest,
- * default, own dedicated worker-comfyui endpoint). `fal_flux_dev` and
- * `fal_nanobanana2` were added 2026-07-13 hosted on fal.ai, then moved
- * 2026-07-14 to RunPod Hub's own Public Endpoints (`black-forest-labs-flux-1-dev`
- * / `google-nano-banana-2-edit` — see src/libs/RunPod.ts's "RunPod Hub Public
- * Endpoints" section) after fal.ai's real per-image billing turned out to run
- * 5-10x its advertised rate. The ids themselves were kept unchanged (not
- * renamed to `runpod_flux_dev`/etc.) to avoid touching every file that
- * references them. Flux.1 [dev] is a step up in quality for a modest cost
- * bump; Nano Banana 2 (Google's model) costs the most but has meaningfully
- * better identity/character consistency for reference-image generations —
- * RunPod's Public Endpoint for it is Edit-only (no bare reference image ->
- * falls back to the Flux Dev engine, see /api/generate/route.ts).
+ * image. `runpod` (Standard) originally ran on a self-hosted Flux Schnell
+ * pod (own dedicated worker-comfyui endpoint, GPU-hour billed — idle time
+ * between generations still cost money). `fal_flux_dev` and `fal_nanobanana2`
+ * were added 2026-07-13 hosted on fal.ai, then moved 2026-07-14 to RunPod
+ * Hub's own Public Endpoints (`black-forest-labs-flux-1-dev` /
+ * `google-nano-banana-2-edit`) after fal.ai's real per-image billing turned
+ * out to run 5-10x its advertised rate. 2026-07-15: `runpod` (Standard) also
+ * moved onto RunPod's public `black-forest-labs-flux-1-schnell` endpoint
+ * ($0.0024/megapixel flat, zero idle cost) for the same reason — see
+ * src/libs/RunPod.ts's "RunPod Hub Public Endpoints" section and
+ * buildRunPodFluxSchnellInput(). The dedicated worker-comfyui pod is now only
+ * used for Standard-engine requests with a reference image (img2img — the
+ * public Schnell endpoint has no img2img mode) plus Photo Restore/Image
+ * Effect/Face Swap, which still need it. The ids themselves were kept
+ * unchanged (not renamed to `runpod_flux_dev`/etc.) to avoid touching every
+ * file that references them. Flux.1 [dev] is a step up in quality for a
+ * modest cost bump; Nano Banana 2 (Google's model) costs the most but has
+ * meaningfully better identity/character consistency for reference-image
+ * generations — RunPod's Public Endpoint for it is Edit-only (no bare
+ * reference image -> falls back to the Flux Dev engine, see
+ * /api/generate/route.ts).
+ *
+ * 2026-07-15: added two more RunPod Public Endpoint models at the user's
+ * request — `qwen_image` (Qwen Image) and `wan_t2i` (Alibaba WAN 2.6),
+ * both plain text-to-image only (no reference-image/edit mode — a reference
+ * image is simply ignored if attached while one of these is selected). See
+ * buildQwenImageInput() / buildWanT2IInput() in src/libs/RunPod.ts.
  */
-export type FluxEngineId = 'runpod' | 'fal_flux_dev' | 'fal_nanobanana2';
+export type FluxEngineId = 'runpod' | 'fal_flux_dev' | 'fal_nanobanana2' | 'qwen_image' | 'wan_t2i';
 
 export const CREDIT_COST = {
   flux: 1, // engine: 'runpod' — kept as the flat default for backward compatibility
@@ -103,11 +117,16 @@ export const CREDIT_COST = {
  *     revenue) still comfortably covers it.
  *   - fal_nanobanana2 (RunPod `google-nano-banana-2-edit`, $0.0875 @ 1K):
  *     -> 6 credits (420₮ min revenue).
+ *   - qwen_image (RunPod `qwen-image-t2i`, $0.02/image flat) -> 2 credits,
+ *     same as fal_flux_dev (same ballpark real cost).
+ *   - wan_t2i (RunPod `wan-2-6-t2i`, $0.03/image flat) -> 3 credits.
  */
 export const FLUX_ENGINE_CREDIT_COST: Record<FluxEngineId, number> = {
   runpod: CREDIT_COST.flux,
   fal_flux_dev: 2,
   fal_nanobanana2: 6,
+  qwen_image: 2,
+  wan_t2i: 3,
 };
 
 /**

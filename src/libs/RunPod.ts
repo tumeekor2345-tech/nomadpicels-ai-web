@@ -180,11 +180,14 @@ export async function cancelRunPodJob(kind: GenerationKind, jobId: string): Prom
 
 const RUNPOD_PUBLIC_JOB_PREFIX = 'rpub::';
 
-/** The 3 RunPod Hub Public Endpoint ids this app calls — see
+/** The RunPod Hub Public Endpoint ids this app calls — see
  * docs.runpod.io/public-endpoints/reference for the full catalog. */
 export type RunPodPublicEndpointId
-  = | 'black-forest-labs-flux-1-dev' // Mid-tier "AI Image" engine — $0.02/megapixel
+  = | 'black-forest-labs-flux-1-schnell' // Standard "AI Image" engine — $0.0024/megapixel (added 2026-07-15, see buildRunPodFluxSchnellInput() comment)
+    | 'black-forest-labs-flux-1-dev' // Mid-tier "AI Image" engine — $0.02/megapixel
     | 'google-nano-banana-2-edit' // Top-tier "AI Image" engine — $0.0875 (1K) / $0.13 (2K) / $0.175 (4K)
+    | 'qwen-image-t2i' // "AI Image" engine — Qwen Image, text-to-image only — $0.02/image flat (added 2026-07-15, see buildQwenImageInput() comment)
+    | 'wan-2-6-t2i' // "AI Image" engine — Alibaba WAN 2.6, text-to-image only — $0.03/image flat (added 2026-07-15, see buildWanT2IInput() comment)
     | 'wan-2-2-i2v-720'; // "AI Video" — $0.30/5s, $0.06/s flat beyond that
 
 export function isRunPodPublicJobId(jobId: string): boolean {
@@ -316,6 +319,35 @@ export async function getRunPodPublicJobStatus(jobId: string): Promise<RunPodPub
   return { id: jobId, status: 'FAILED', error: 'RunPod public endpoint returned no image or video in the result.' };
 }
 
+/** `black-forest-labs-flux-1-schnell` — text-to-image, Standard engine.
+ * Added 2026-07-15 to replace the dedicated worker-comfyui Flux Schnell pod
+ * (GPU-hour billed, idle time still costs money) with RunPod Hub's own
+ * Public Endpoint for the same model ($0.0024/megapixel, zero idle cost —
+ * confirmed via console.runpod.io/hub/playground/image/black-forest-labs-flux-1-schnell,
+ * whose "API" tab shows the exact input shape used below). Schnell is a
+ * timestep-distilled model — Black Forest Labs' own defaults use only 4
+ * inference steps (vs Dev's 28) and it does NOT support img2img/reference
+ * images on this endpoint, so /api/generate keeps using the dedicated
+ * worker-comfyui endpoint (buildFluxImg2ImgInput) for Standard-engine
+ * generations that include a reference image. */
+export function buildRunPodFluxSchnellInput(params: {
+  prompt: string;
+  width?: number;
+  height?: number;
+  seed?: number;
+}) {
+  return {
+    prompt: params.prompt,
+    width: params.width ?? 1024,
+    height: params.height ?? 1024,
+    num_inference_steps: 4,
+    guidance: 7,
+    negative_prompt: '',
+    seed: params.seed ?? -1,
+    image_format: 'png',
+  };
+}
+
 /** `black-forest-labs-flux-1-dev` — text-to-image, Mid-tier engine. */
 export function buildRunPodFluxDevInput(params: {
   prompt: string;
@@ -350,6 +382,48 @@ export function buildRunPodNanoBanana2EditInput(params: {
     prompt: params.prompt,
     resolution: params.resolution ?? '1k',
     output_format: 'png',
+  };
+}
+
+/** `qwen-image-t2i` — Qwen Image, text-to-image only "AI Image" engine.
+ * Added 2026-07-15 alongside `wan-2-6-t2i` at the user's request. No
+ * reference-image (edit) mode on this endpoint — /api/generate always calls
+ * it with a plain text prompt regardless of whether the user attached a
+ * reference image (the reference is simply ignored for this engine, same as
+ * any other pure text-to-image model). Input shape confirmed via
+ * console.runpod.io/hub/playground/image/qwen-image-t2i -> API tab. */
+export function buildQwenImageInput(params: {
+  prompt: string;
+  negativePrompt?: string;
+  width?: number;
+  height?: number;
+  seed?: number;
+}) {
+  return {
+    prompt: params.prompt,
+    negative_prompt: params.negativePrompt ?? '',
+    size: `${params.width ?? 1328}*${params.height ?? 1328}`,
+    seed: params.seed ?? -1,
+    enable_safety_checker: true,
+  };
+}
+
+/** `wan-2-6-t2i` — Alibaba WAN 2.6, text-to-image only "AI Image" engine.
+ * Added 2026-07-15 alongside `qwen-image-t2i` at the user's request. Same
+ * "no reference-image mode" caveat as buildQwenImageInput() above. Input
+ * shape confirmed via console.runpod.io/hub/playground/image/wan-2-6-t2i ->
+ * API tab. */
+export function buildWanT2IInput(params: {
+  prompt: string;
+  width?: number;
+  height?: number;
+  seed?: number;
+}) {
+  return {
+    prompt: params.prompt,
+    size: `${params.width ?? 1024}*${params.height ?? 1024}`,
+    seed: params.seed ?? -1,
+    enable_safety_checker: true,
   };
 }
 

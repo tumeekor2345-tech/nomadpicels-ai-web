@@ -21,10 +21,12 @@ import { buildFinalModelPrompt } from '@/libs/PromptPipeline';
 import {
   buildFaceSwapInput,
   buildFluxImg2ImgInput,
-  buildFluxInput,
+  buildQwenImageInput,
   buildRunPodFluxDevInput,
+  buildRunPodFluxSchnellInput,
   buildRunPodNanoBanana2EditInput,
   buildWanInput,
+  buildWanT2IInput,
   submitRunPodJob,
   submitRunPodPublicJob,
 } from '@/libs/RunPod';
@@ -39,7 +41,7 @@ import { creditBalanceSchema, generationSchema } from '@/models/Schema';
 // to 'runpod_flux_dev'/etc.) to avoid touching every file that references
 // them (Pricing.ts, GenerateForm.tsx, translations, existing DB rows) — as
 // of 2026-07-14 both now call RunPod's Public Endpoints, not fal.ai.
-const VALID_FLUX_ENGINES: FluxEngineId[] = ['runpod', 'fal_flux_dev', 'fal_nanobanana2'];
+const VALID_FLUX_ENGINES: FluxEngineId[] = ['runpod', 'fal_flux_dev', 'fal_nanobanana2', 'qwen_image', 'wan_t2i'];
 
 /**
  * Starts a generation job (Flux image, Wan 2.2 video, or a one-click "Tools"
@@ -47,11 +49,6 @@ const VALID_FLUX_ENGINES: FluxEngineId[] = ['runpod', 'fal_flux_dev', 'fal_nanob
  * immediately. The client polls GET /api/generate/status for status, since
  * video generation can take well over typical serverless HTTP timeouts.
  */
-
-const FLUX_WORKFLOW_PATH = path.join(
-  process.cwd(),
-  'src/libs/workflows/flux-schnell-txt2img.json',
-);
 
 const FLUX_IMG2IMG_WORKFLOW_PATH = path.join(
   process.cwd(),
@@ -73,14 +70,6 @@ const FACE_SWAP_NEGATIVE_PROMPT = 'bad quality, blurry, deformed, nudity, nsfw, 
 // up. Not tied to the pricing page's per-plan limits yet — just a blunt cap
 // so one account can't burn through the whole RunPod balance in a loop.
 const DAILY_GENERATION_LIMIT = 20;
-
-function loadFluxWorkflow(): ComfyUIWorkflow | null {
-  if (!fs.existsSync(FLUX_WORKFLOW_PATH)) {
-    return null;
-  }
-
-  return JSON.parse(fs.readFileSync(FLUX_WORKFLOW_PATH, 'utf-8'));
-}
 
 function loadFluxImg2ImgWorkflow(): ComfyUIWorkflow | null {
   if (!fs.existsSync(FLUX_IMG2IMG_WORKFLOW_PATH)) {
@@ -220,24 +209,13 @@ export async function POST(request: Request) {
     : 'runpod';
   const usingRunPodFlux = body.kind === 'flux' && fluxEngine === 'runpod';
 
-  // RunPod Public Endpoint engines (fal_flux_dev / fal_nanobanana2 — see the
-  // note above VALID_FLUX_ENGINES) don't use ComfyUI workflow.json graphs at
-  // all — only the 'runpod' engine, and photo_restore/image_effect (still
-  // the dedicated worker-comfyui endpoint), need these loaded.
-  const fluxWorkflow = (usingRunPodFlux && !usingFluxReference) ? loadFluxWorkflow() : null;
-  if (usingRunPodFlux && !usingFluxReference && !fluxWorkflow) {
-    return NextResponse.json(
-      {
-        error: 'flux_workflow_not_configured',
-        message: 'Flux workflow.json is not set up yet. Export it from ComfyUI '
-          + '(Workflow > Export (API)) and save it as '
-          + 'src/libs/workflows/flux-schnell-txt2img.json — see that folder\'s '
-          + 'README.md for the exact steps.',
-      },
-      { status: 501 },
-    );
-  }
-
+  // RunPod Public Endpoint engines (fal_flux_dev / fal_nanobanana2, and as of
+  // 2026-07-15 also the plain 'runpod' Standard engine — see
+  // buildRunPodFluxSchnellInput()'s comment in src/libs/RunPod.ts) don't use
+  // ComfyUI workflow.json graphs at all. Only a Standard-engine request WITH
+  // a reference image (img2img — the public Flux Schnell endpoint has no
+  // img2img mode) still needs the dedicated worker-comfyui endpoint, same as
+  // photo_restore/image_effect.
   const needsImg2ImgWorkflow = body.kind === 'photo_restore' || body.kind === 'image_effect' || (usingFluxReference && usingRunPodFlux);
   const img2imgWorkflow = needsImg2ImgWorkflow ? loadFluxImg2ImgWorkflow() : null;
   if (needsImg2ImgWorkflow && !img2imgWorkflow) {
@@ -282,8 +260,13 @@ export async function POST(request: Request) {
     if (body.kind === 'flux') {
       // 3-way engine selector (added 2026-07-13, moved fully off fal.ai onto
       // RunPod Hub Public Endpoints 2026-07-14 — see src/libs/RunPod.ts's
-      // "RunPod Hub Public Endpoints" section for why). 'runpod' keeps the
-      // original self-hosted worker-comfyui path unchanged.
+      // "RunPod Hub Public Endpoints" section for why). 2026-07-15: 'runpod'
+      // (Standard) also moved off the dedicated worker-comfyui pod onto
+      // RunPod's own public `black-forest-labs-flux-1-schnell` endpoint
+      // (GPU-hour billing there meant idle time cost money even between
+      // generations; the public endpoint is flat per-image and cheaper) —
+      // the dedicated pod is now only used for the reference-image (img2img)
+      // case, since the public Schnell endpoint has no img2img mode.
       //
       // referenceImageBase64 arrives as bare base64 (no data: prefix — see
       // GenerateForm.tsx's handleReferenceFileChange); RunPod's Nano Banana 2
@@ -308,22 +291,34 @@ export async function POST(request: Request) {
               'black-forest-labs-flux-1-dev',
               buildRunPodFluxDevInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
             )
-          : await submitRunPodJob(
-              'flux',
-              usingFluxReference
-                ? buildFluxImg2ImgInput(img2imgWorkflow!, {
-                    prompt: modelPrompt,
-                    imageBase64: body.referenceImageBase64,
-                    denoise: typeof body.denoise === 'number' ? body.denoise : 0.55,
-                    seed: body.seed,
-                  })
-                : buildFluxInput(fluxWorkflow!, {
-                    prompt: modelPrompt,
-                    width: body.width,
-                    height: body.height,
-                    seed: body.seed,
-                  }),
-            );
+          // qwen_image / wan_t2i (added 2026-07-15) are plain text-to-image
+          // engines with no reference-image mode on their RunPod Public
+          // Endpoints — a reference image attached while one of these is
+          // selected is simply ignored, same as any other pure t2i model.
+          : fluxEngine === 'qwen_image'
+            ? await submitRunPodPublicJob(
+                'qwen-image-t2i',
+                buildQwenImageInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
+              )
+            : fluxEngine === 'wan_t2i'
+              ? await submitRunPodPublicJob(
+                  'wan-2-6-t2i',
+                  buildWanT2IInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
+                )
+              : usingFluxReference
+                ? await submitRunPodJob(
+                    'flux',
+                    buildFluxImg2ImgInput(img2imgWorkflow!, {
+                      prompt: modelPrompt,
+                      imageBase64: body.referenceImageBase64,
+                      denoise: typeof body.denoise === 'number' ? body.denoise : 0.55,
+                      seed: body.seed,
+                    }),
+                  )
+                : await submitRunPodPublicJob(
+                    'black-forest-labs-flux-1-schnell',
+                    buildRunPodFluxSchnellInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
+                  );
 
       const [row] = await db.insert(generationSchema).values({
         ownerId: userId,

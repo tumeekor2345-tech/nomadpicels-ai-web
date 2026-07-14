@@ -48,11 +48,15 @@ export default async function CreateImagePage(props: {
             runpod: t('engine_runpod'),
             fal_flux_dev: t('engine_fal_flux_dev'),
             fal_nanobanana2: t('engine_fal_nanobanana2'),
+            qwen_image: t('engine_qwen_image'),
+            wan_t2i: t('engine_wan_t2i'),
           },
           engineHints: {
             runpod: t('engine_runpod_hint'),
             fal_flux_dev: t('engine_fal_flux_dev_hint'),
             fal_nanobanana2: t('engine_fal_nanobanana2_hint'),
+            qwen_image: t('engine_qwen_image_hint'),
+            wan_t2i: t('engine_wan_t2i_hint'),
           },
           styleLabel: t('style_label'),
           styleNames: {
