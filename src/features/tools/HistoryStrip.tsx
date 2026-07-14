@@ -1,5 +1,6 @@
 'use client';
 
+import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useResolvePendingGenerations } from '@/features/generate/useResolvePendingGenerations';
 
@@ -27,9 +28,19 @@ export const HistoryStrip = (props: {
    * the default narrow sidebar strip — added 2026-07-15 for Face Swap's
    * imagine.art-style full-width history section below the form. */
   wide?: boolean;
+  // Added 2026-07-15 — history thumbnails used to be plain, unclickable
+  // <img> tags with no way to see the full-size image or download it (the
+  // download link only ever existed on the current "Үр дүн" result). Ports
+  // the lightbox GenerateForm.tsx already has for the Create page's history
+  // grid, so Photo Restore / Face Swap / Image Effect get the same
+  // click-to-enlarge + download behavior.
+  viewLabel: string;
+  closeLabel: string;
+  downloadLabel: string;
 }) => {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<{ src: string; filename: string } | null>(null);
 
   // Un-sticks any generation still shown as IN_QUEUE/IN_PROGRESS here — see
   // useResolvePendingGenerations.ts for why that happens in the first place.
@@ -92,8 +103,24 @@ export const HistoryStrip = (props: {
               >
                 {src
                   ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={src} alt="" className="size-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setLightboxSrc({ src, filename: image?.filename ?? `${item.kind}-${item.id}.png` })}
+                        aria-label={props.viewLabel}
+                        className="group relative block size-full"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={src} alt="" className="size-full object-cover" />
+                        <span className="
+                          absolute inset-0 flex items-center justify-center
+                          bg-black/0 text-xs font-medium text-transparent
+                          transition-colors
+                          group-hover:bg-black/40 group-hover:text-white
+                        "
+                        >
+                          {props.viewLabel}
+                        </span>
+                      </button>
                     )
                   : (
                       <div className="
@@ -107,6 +134,42 @@ export const HistoryStrip = (props: {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <div
+            className="flex max-h-full max-w-full flex-col items-center gap-3"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxSrc.src}
+              alt=""
+              className="max-h-[80vh] max-w-full rounded-md object-contain"
+            />
+            <div className="flex items-center gap-4">
+              <a
+                href={lightboxSrc.src}
+                download={lightboxSrc.filename}
+                className="text-sm font-medium text-white underline"
+              >
+                {props.downloadLabel}
+              </a>
+              <button
+                type="button"
+                onClick={() => setLightboxSrc(null)}
+                className="flex items-center gap-1 text-sm font-medium text-white"
+              >
+                <X className="size-4" />
+                {props.closeLabel}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

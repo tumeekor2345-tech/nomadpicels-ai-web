@@ -349,7 +349,9 @@
     "result_title": "Result",
     "result_empty": "Your generated result will appear here.",
     "history_title": "Your generations",
-    "history_empty": "Nothing generated yet."
+    "history_empty": "Nothing generated yet.",
+    "history_view": "View full size",
+    "history_lightbox_close": "Close"
   },
   "BillingPage": {
     "title_bar": "Billing",

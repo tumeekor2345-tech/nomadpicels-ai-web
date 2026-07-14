@@ -59,6 +59,10 @@ type Labels = {
   resultEmpty: string;
   historyTitle: string;
   historyEmpty: string;
+  // Added 2026-07-15 — history thumbnails were unclickable; these power the
+  // lightbox (zoom + download) now built into HistoryStrip.tsx.
+  historyView: string;
+  historyLightboxClose: string;
 };
 
 /** One upload slot: shows a preview thumbnail with a remove button once a
@@ -453,6 +457,9 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
         emptyLabel={labels.historyEmpty}
         refreshKey={historyKey}
         wide
+        viewLabel={labels.historyView}
+        closeLabel={labels.historyLightboxClose}
+        downloadLabel={labels.downloadLabel}
       />
     </div>
   );

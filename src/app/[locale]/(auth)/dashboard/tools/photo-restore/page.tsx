@@ -46,6 +46,8 @@ export default async function PhotoRestorePage(props: {
           resultEmpty: t('result_empty'),
           historyTitle: t('history_title'),
           historyEmpty: t('history_empty'),
+          historyView: t('history_view'),
+          historyLightboxClose: t('history_lightbox_close'),
         }}
       />
     </>

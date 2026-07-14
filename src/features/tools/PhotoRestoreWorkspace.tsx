@@ -22,6 +22,8 @@ type Labels = {
   resultEmpty: string;
   historyTitle: string;
   historyEmpty: string;
+  historyView: string;
+  historyLightboxClose: string;
 };
 
 export const PhotoRestoreWorkspace = (props: { labels: Labels }) => {
@@ -161,6 +163,9 @@ export const PhotoRestoreWorkspace = (props: { labels: Labels }) => {
           title={labels.historyTitle}
           emptyLabel={labels.historyEmpty}
           refreshKey={historyKey}
+          viewLabel={labels.historyView}
+          closeLabel={labels.historyLightboxClose}
+          downloadLabel={labels.downloadLabel}
         />
       </div>
     </div>
