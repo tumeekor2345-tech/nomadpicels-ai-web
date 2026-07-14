@@ -239,9 +239,21 @@ export type RunPodPublicJobStatus = {
 };
 
 /** Checks status of a previously submitted public-endpoint job and
- * normalizes RunPod's `output.image_url` / `output.video_url` response
- * shape into the same `{ images: [...] }` / `{ result: <url> }` shape the
- * rest of the app (RunPod worker-comfyui, fal) already uses. */
+ * normalizes RunPod's response shape into the same `{ images: [...] }` /
+ * `{ result: <url> }` shape the rest of the app (RunPod worker-comfyui, fal)
+ * already uses.
+ *
+ * 2026-07-15: the initial version of this function assumed a
+ * `output.image_url` / `output.video_url` shape (guessed from docs
+ * skimming) — live-tested against `black-forest-labs-flux-1-dev` and the
+ * real COMPLETED payload turned out to be
+ * `{ output: { cost: 0.012, result: "https://image.runpod.ai/.../result.jpeg" } }`.
+ * So RunPod's Public Endpoints actually use a single `output.result` string
+ * for the primary output URL regardless of media type — image endpoints put
+ * an image URL there, `wan-2-2-i2v-720` puts a video URL there. We still
+ * check the old `image_url`/`video_url` names first in case some other
+ * endpoint uses them, then fall back to `result`, deciding image vs video
+ * by endpointId (only `wan-2-2-i2v-720` is video). */
 export async function getRunPodPublicJobStatus(jobId: string): Promise<RunPodPublicJobStatus> {
   const { endpointId, requestId } = decodeRunPodPublicJobId(jobId);
 
@@ -264,12 +276,14 @@ export async function getRunPodPublicJobStatus(jobId: string): Promise<RunPodPub
   const data = await res.json() as {
     status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
     error?: string;
-    output?: { image_url?: string; video_url?: string; cost?: number };
+    output?: { image_url?: string; video_url?: string; result?: string; cost?: number };
   };
 
   if (data.status !== 'COMPLETED') {
     return { id: jobId, status: data.status, error: data.error };
   }
+
+  const isVideoEndpoint = endpointId === 'wan-2-2-i2v-720';
 
   if (data.output?.image_url) {
     return {
@@ -285,10 +299,21 @@ export async function getRunPodPublicJobStatus(jobId: string): Promise<RunPodPub
     return { id: jobId, status: 'COMPLETED', output: { result: data.output.video_url } };
   }
 
-  // TEMP DEBUG 2026-07-14: the assumed output.image_url/video_url shape
-  // isn't matching what the live endpoint actually returns — surface the
-  // raw payload so we can see the real shape, then fix and remove this.
-  return { id: jobId, status: 'FAILED', error: `RunPod public endpoint returned no image or video in the result. RAW=${JSON.stringify(data)}` };
+  if (data.output?.result && isVideoEndpoint) {
+    return { id: jobId, status: 'COMPLETED', output: { result: data.output.result } };
+  }
+
+  if (data.output?.result) {
+    return {
+      id: jobId,
+      status: 'COMPLETED',
+      output: {
+        images: [{ filename: `${requestId}.png`, type: 's3_url', data: data.output.result }],
+      },
+    };
+  }
+
+  return { id: jobId, status: 'FAILED', error: 'RunPod public endpoint returned no image or video in the result.' };
 }
 
 /** `black-forest-labs-flux-1-dev` — text-to-image, Mid-tier engine. */
