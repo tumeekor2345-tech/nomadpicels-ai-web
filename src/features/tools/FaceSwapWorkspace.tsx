@@ -1,6 +1,8 @@
 'use client';
 
 import type { FaceSwapStyleId } from '@/libs/FaceSwapStyles';
+import type { ChangeEvent } from 'react';
+import { X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +19,19 @@ type Labels = {
   styleLabels: Record<FaceSwapStyleId, string>;
   imageUrlLabel: string;
   imageUrlPlaceholder: string;
+  // Added 2026-07-15 — the tool only ever had a "paste a URL" text field
+  // (imageUrlLabel above), which meant a user had to already have their
+  // photo hosted somewhere public before they could use it at all. Per the
+  // user's feedback ("гол нь би зургаа оруулж болохгүй байна" — the whole
+  // point is I can't upload my own photo), added a real file-upload button
+  // (same base64 data-URL pattern as GenerateForm.tsx's reference-image
+  // upload). Uploading a file fills imageUrl with a data: URI under the
+  // hood — no server change needed, buildFaceSwapInput() just forwards
+  // whatever string it's given as `image_url` to the worker.
+  uploadLabel: string;
+  uploadButton: string;
+  uploadRemove: string;
+  uploadOrUrlDivider: string;
   run: string;
   running: string;
   queued: string;
@@ -33,6 +48,8 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
   const { labels } = props;
   const [style, setStyle] = useState<FaceSwapStyleId>(DEFAULT_FACE_SWAP_STYLE);
   const [imageUrl, setImageUrl] = useState('');
+  const [uploadedPreview, setUploadedPreview] = useState<string | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -77,6 +94,26 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
 
     setStatusText(data.status === 'IN_QUEUE' ? labels.queued : labels.inProgress);
     pollTimer.current = setTimeout(pollStatus, POLL_INTERVAL_MS, jobId, startedAt);
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setUploadedPreview(dataUrl);
+      setImageUrl(dataUrl);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const clearUpload = () => {
+    setUploadedPreview(null);
+    setImageUrl('');
   };
 
   const handleRun = async () => {
@@ -152,16 +189,61 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="face-swap-url">{labels.imageUrlLabel}</Label>
-          <Input
-            id="face-swap-url"
-            type="url"
-            required
-            value={imageUrl}
-            onChange={e => setImageUrl(e.target.value)}
-            placeholder={labels.imageUrlPlaceholder}
+          <Label>{labels.uploadLabel}</Label>
+          {uploadedPreview
+            ? (
+                <div className="relative w-fit">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={uploadedPreview}
+                    alt=""
+                    className="h-28 w-28 rounded-md object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearUpload}
+                    aria-label={labels.uploadRemove}
+                    className="
+                      absolute -right-2 -top-2 flex size-6 items-center
+                      justify-center rounded-full bg-destructive
+                      text-destructive-foreground
+                    "
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              )
+            : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => uploadInputRef.current?.click()}
+                >
+                  {labels.uploadButton}
+                </Button>
+              )}
+          <input
+            ref={uploadInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
           />
         </div>
+
+        {!uploadedPreview && (
+          <div className="flex flex-col gap-1.5">
+            <div className="text-xs text-muted-foreground">{labels.uploadOrUrlDivider}</div>
+            <Label htmlFor="face-swap-url">{labels.imageUrlLabel}</Label>
+            <Input
+              id="face-swap-url"
+              type="url"
+              value={imageUrl}
+              onChange={e => setImageUrl(e.target.value)}
+              placeholder={labels.imageUrlPlaceholder}
+            />
+          </div>
+        )}
 
         <Button type="button" disabled={submitting || !imageUrl} onClick={handleRun}>
           {submitting ? labels.running : labels.run}
