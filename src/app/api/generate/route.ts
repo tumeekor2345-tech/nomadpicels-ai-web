@@ -16,7 +16,8 @@ import {
   EFFECT_PRESETS,
   STYLE_PRESETS,
 } from '@/libs/ImagePresets';
-import { CREDIT_COST, FLUX_ENGINE_CREDIT_COST, wanCreditCost } from '@/libs/Pricing';
+import type { NanoBanana2Resolution } from '@/libs/Pricing';
+import { CREDIT_COST, FLUX_ENGINE_CREDIT_COST, NANOBANANA2_RESOLUTION_CREDIT_COST, wanCreditCost } from '@/libs/Pricing';
 import { buildFinalModelPrompt } from '@/libs/PromptPipeline';
 import {
   buildFaceSwapInput,
@@ -42,6 +43,13 @@ import { creditBalanceSchema, generationSchema } from '@/models/Schema';
 // them (Pricing.ts, GenerateForm.tsx, translations, existing DB rows) — as
 // of 2026-07-14 both now call RunPod's Public Endpoints, not fal.ai.
 const VALID_FLUX_ENGINES: FluxEngineId[] = ['runpod', 'fal_flux_dev', 'fal_nanobanana2', 'qwen_image', 'wan_t2i'];
+
+// Nano Banana 2 Edit's resolution tier (see NANOBANANA2_RESOLUTION_CREDIT_COST
+// in src/libs/Pricing.ts and buildRunPodNanoBanana2EditInput() in RunPod.ts).
+// Only meaningful when fluxEngine === 'fal_nanobanana2' AND a reference image
+// is attached (the actual Nano Banana 2 call) — the no-reference fallback to
+// Flux Dev always renders at its own fixed size and ignores this entirely.
+const VALID_NANOBANANA2_RESOLUTIONS: NanoBanana2Resolution[] = ['1k', '2k', '4k'];
 
 /**
  * Starts a generation job (Flux image, Wan 2.2 video, or a one-click "Tools"
@@ -209,6 +217,16 @@ export async function POST(request: Request) {
     : 'runpod';
   const usingRunPodFlux = body.kind === 'flux' && fluxEngine === 'runpod';
 
+  // Only meaningful for an actual Nano Banana 2 Edit call (Top-tier engine +
+  // reference image) — the no-reference fallback to Flux Dev always renders
+  // at its own fixed size, so `resolution` is ignored there. Falls back to
+  // '1k' for anything invalid/missing, same rate as before this feature
+  // existed (see NANOBANANA2_RESOLUTION_CREDIT_COST in src/libs/Pricing.ts).
+  const usingNanoBanana2 = fluxEngine === 'fal_nanobanana2' && usingFluxReference;
+  const nanoBanana2Resolution: NanoBanana2Resolution = usingNanoBanana2 && VALID_NANOBANANA2_RESOLUTIONS.includes(body.resolution)
+    ? body.resolution
+    : '1k';
+
   // RunPod Public Endpoint engines (fal_flux_dev / fal_nanobanana2, and as of
   // 2026-07-15 also the plain 'runpod' Standard engine — see
   // buildRunPodFluxSchnellInput()'s comment in src/libs/RunPod.ts) don't use
@@ -237,7 +255,9 @@ export async function POST(request: Request) {
   // existing anti-abuse daily limit.
   const isAdmin = await isAdminUser(userId);
   const creditCost = body.kind === 'flux'
-    ? FLUX_ENGINE_CREDIT_COST[fluxEngine]
+    ? usingNanoBanana2
+      ? NANOBANANA2_RESOLUTION_CREDIT_COST[nanoBanana2Resolution]
+      : FLUX_ENGINE_CREDIT_COST[fluxEngine]
     : body.kind === 'wan'
       ? wanCreditCost(typeof body.durationSeconds === 'number' ? body.durationSeconds : 5)
       : CREDIT_COST[body.kind as keyof typeof CREDIT_COST];
@@ -284,7 +304,7 @@ export async function POST(request: Request) {
       const job = fluxEngine === 'fal_nanobanana2' && referenceDataUrl
         ? await submitRunPodPublicJob(
             'google-nano-banana-2-edit',
-            buildRunPodNanoBanana2EditInput({ prompt: modelPrompt, imageUrl: referenceDataUrl }),
+            buildRunPodNanoBanana2EditInput({ prompt: modelPrompt, imageUrl: referenceDataUrl, resolution: nanoBanana2Resolution }),
           )
         : fluxEngine === 'fal_flux_dev' || fluxEngine === 'fal_nanobanana2'
           ? await submitRunPodPublicJob(

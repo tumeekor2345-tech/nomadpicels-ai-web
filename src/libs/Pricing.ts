@@ -124,10 +124,29 @@ export const CREDIT_COST = {
 export const FLUX_ENGINE_CREDIT_COST: Record<FluxEngineId, number> = {
   runpod: CREDIT_COST.flux,
   fal_flux_dev: 2,
-  fal_nanobanana2: 6,
+  fal_nanobanana2: 6, // = NANOBANANA2_RESOLUTION_CREDIT_COST['1k'] — kept for the Flux-Dev-fallback case (no reference image), which always renders at 1K regardless of the requested resolution.
   qwen_image: 2,
   wan_t2i: 3,
 };
+
+/**
+ * Nano Banana 2 Edit (Top-tier) is the only engine whose RunPod Public
+ * Endpoint offers a resolution tier (`1k` / `2k` / `4k` — see
+ * buildRunPodNanoBanana2EditInput() in src/libs/RunPod.ts), priced
+ * per-resolution by RunPod at $0.0875 / $0.13 / $0.175. Credit costs below
+ * scale from the existing 6-credit/1K rate (6 credits ÷ $0.0875 ≈
+ * 68.6 credits/$) so margin stays consistent across tiers:
+ *   - 2K: $0.13 × 68.6 ≈ 8.9 -> 9 credits
+ *   - 4K: $0.175 × 68.6 ≈ 12.0 -> 12 credits
+ * Added 2026-07-15 at the user's request ("4K гэх захиалга өгч болох уу").
+ */
+export const NANOBANANA2_RESOLUTION_CREDIT_COST = {
+  '1k': FLUX_ENGINE_CREDIT_COST.fal_nanobanana2,
+  '2k': 9,
+  '4k': 12,
+} as const;
+
+export type NanoBanana2Resolution = keyof typeof NANOBANANA2_RESOLUTION_CREDIT_COST;
 
 /**
  * RunPod Hub's public `wan-2-2-i2v-720` endpoint (see src/libs/RunPod.ts) is

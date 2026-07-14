@@ -58,6 +58,13 @@ export default async function CreateVideoPage(props: {
             qwen_image: t('engine_qwen_image_hint'),
             wan_t2i: t('engine_wan_t2i_hint'),
           },
+          resolutionLabel: t('resolution_label'),
+          resolutionHint: t('resolution_hint'),
+          resolutionNames: {
+            '1k': t('resolution_1k'),
+            '2k': t('resolution_2k'),
+            '4k': t('resolution_4k'),
+          },
           styleLabel: t('style_label'),
           styleNames: {
             'none': t('style_none'),

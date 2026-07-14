@@ -6,7 +6,7 @@ import type {
   ReferenceInfluence,
   StyleId,
 } from '@/libs/ImagePresets';
-import type { FluxEngineId } from '@/libs/Pricing';
+import type { FluxEngineId, NanoBanana2Resolution } from '@/libs/Pricing';
 import { CheckIcon, ChevronDownIcon, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -46,6 +46,16 @@ const WAN_SIZES: Array<{ id: WanAspectRatioId; size: '1280*720' | '720*1280' }> 
 // (FLUX_ENGINE_CREDIT_COST) for the credit cost behind each option and
 // src/libs/RunPod.ts for how each one actually gets called server-side.
 const FLUX_ENGINES: FluxEngineId[] = ['runpod', 'fal_flux_dev', 'fal_nanobanana2', 'qwen_image', 'wan_t2i'];
+
+// Resolution tiers for the Top-tier (Nano Banana 2) engine only — added
+// 2026-07-15 at the user's request ("4K гэх захиалга өгч болох уу"). See
+// NANOBANANA2_RESOLUTION_CREDIT_COST in src/libs/Pricing.ts for the credit
+// cost behind each tier and buildRunPodNanoBanana2EditInput() in RunPod.ts
+// for how it's actually passed to the endpoint. Only takes effect once a
+// reference image is attached (that's when the real Nano Banana 2 Edit call
+// happens) — ignored by every other engine and by the no-reference Flux Dev
+// fallback.
+const NANOBANANA2_RESOLUTIONS: NanoBanana2Resolution[] = ['1k', '2k', '4k'];
 
 type JobStatus = {
   id: string;
@@ -110,6 +120,9 @@ export const GenerateForm = (props: {
     engineLabel: string;
     engineNames: Record<FluxEngineId, string>;
     engineHints: Record<FluxEngineId, string>;
+    resolutionLabel: string;
+    resolutionHint: string;
+    resolutionNames: Record<NanoBanana2Resolution, string>;
     styleLabel: string;
     styleNames: Record<StyleId, string>;
     aspectRatioLabel: string;
@@ -165,6 +178,7 @@ export const GenerateForm = (props: {
   // switch to "Байхгүй" or any other style manually.
   const [style, setStyle] = useState<StyleId>('photorealistic');
   const [engine, setEngine] = useState<FluxEngineId>('runpod');
+  const [nanoBanana2Resolution, setNanoBanana2Resolution] = useState<NanoBanana2Resolution>('1k');
   const [lens, setLens] = useState<LensId>('none');
   const [aspectRatio, setAspectRatio] = useState<AspectRatioId>('1:1');
   const [referenceImage, setReferenceImage] = useState<{ dataUrl: string; base64: string } | null>(null);
@@ -360,6 +374,11 @@ export const GenerateForm = (props: {
           finalPromptOverride: finalPrompt,
           width: ASPECT_RATIOS.find(r => r.id === aspectRatio)?.width,
           height: ASPECT_RATIOS.find(r => r.id === aspectRatio)?.height,
+          // Only meaningful for the Top-tier (Nano Banana 2) engine WITH a
+          // reference image attached — the server ignores it otherwise (see
+          // /api/generate/route.ts's usingNanoBanana2 check), but there's no
+          // harm sending it unconditionally.
+          resolution: nanoBanana2Resolution,
           ...(referenceImage
             ? {
                 referenceImageBase64: referenceImage.base64,
@@ -725,6 +744,35 @@ export const GenerateForm = (props: {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+            </div>
+          )}
+
+          {/* Resolution (1K/2K/4K) — Top-tier (Nano Banana 2) only. Added
+              2026-07-15. Kept as small chip buttons (like Aspect ratio) rather
+              than another dropdown since there are only 3 options and the
+              credit cost difference between them is the whole point of
+              showing them side by side. */}
+          {kind === 'flux' && engine === 'fal_nanobanana2' && (
+            <div className="flex flex-col gap-1.5">
+              <Label>{props.labels.resolutionLabel}</Label>
+              <div className="flex gap-2">
+                {NANOBANANA2_RESOLUTIONS.map(res => (
+                  <button
+                    key={res}
+                    type="button"
+                    onClick={() => setNanoBanana2Resolution(res)}
+                    className={cn(
+                      'flex-1 rounded-md border px-2 py-1.5 text-xs font-medium',
+                      nanoBanana2Resolution === res
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-input bg-transparent text-muted-foreground',
+                    )}
+                  >
+                    {props.labels.resolutionNames[res]}
+                  </button>
+                ))}
+              </div>
+              <div className="text-xs text-muted-foreground">{props.labels.resolutionHint}</div>
             </div>
           )}
 
