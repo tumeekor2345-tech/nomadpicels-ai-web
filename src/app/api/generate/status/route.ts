@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
-import { getFalJobStatus, isFalJobId } from '@/libs/Fal';
+import { isFalJobId } from '@/libs/Fal';
 import { getRunPodJobStatus, getRunPodPublicJobStatus, isRunPodPublicJobId } from '@/libs/RunPod';
 import { generationSchema } from '@/models/Schema';
 
@@ -55,17 +55,23 @@ export async function GET(request: Request) {
 
   try {
     // Three possible job id shapes now:
-    // - `fal::{modelId}::{requestId}` — fal.ai jobs. Fully retired as of
-    //   2026-07-14 (see src/libs/RunPod.ts), but old DB rows from before the
-    //   switch still have this shape, so the branch stays so their history
-    //   entries keep resolving instead of erroring forever.
+    // - `fal::{modelId}::{requestId}` — fal.ai jobs. fal.ai was fully retired
+    //   2026-07-14 (see src/libs/RunPod.ts). 2026-07-15 fix: old pending rows
+    //   with this shape were found still being polled every 4s, forever, on
+    //   every page load (the client-side MAX_POLL_ATTEMPTS cap resets on
+    //   every component remount, so it never actually stopped them) — with
+    //   8 stale jobs accumulated from testing, this was enough concurrent
+    //   fetch traffic to freeze the tab's renderer. Since fal.ai is gone for
+    //   good, these jobs can never complete — resolve them as FAILED
+    //   immediately (no outbound call, no more polling) instead of asking
+    //   fal.ai's API at all.
     // - `rpub::{endpointId}::{requestId}` — RunPod Hub Public Endpoint jobs
     //   (Mid-tier Flux Dev, Top-tier Nano Banana 2, Wan video — see
     //   src/libs/RunPod.ts's "RunPod Hub Public Endpoints" section).
     // - anything else — the dedicated worker-comfyui/faceswap endpoints
     //   (Standard engine, Photo Restore, Image Effect).
     const status = isFalJobId(jobId)
-      ? await getFalJobStatus(jobId)
+      ? { id: jobId, status: 'FAILED' as const, error: 'fal.ai service was retired 2026-07-14; this job predates the switch to RunPod and can no longer complete.' }
       : isRunPodPublicJobId(jobId)
         ? await getRunPodPublicJobStatus(jobId)
         : await getRunPodJobStatus(toRunPodKind(row.kind), jobId);
