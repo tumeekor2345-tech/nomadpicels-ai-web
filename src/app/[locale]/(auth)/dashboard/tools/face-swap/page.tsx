@@ -35,6 +35,8 @@ export default async function FaceSwapPage(props: {
 
       <FaceSwapWorkspace
         labels={{
+          modeStyleLabel: t('face_swap_mode_style'),
+          modeSwapLabel: t('face_swap_mode_swap'),
           styleLabel: t('face_swap_style_label'),
           styleLabels: Object.fromEntries(
             FACE_SWAP_STYLE_IDS.map(id => [id, t(`face_swap_style_${id}`)]),
@@ -46,6 +48,10 @@ export default async function FaceSwapPage(props: {
           uploadRemove: t('face_swap_upload_remove'),
           uploadOrUrlDivider: t('face_swap_upload_or_url'),
           uploadFailed: t('face_swap_upload_failed'),
+          targetImageLabel: t('face_swap_target_image_label'),
+          targetImageHint: t('face_swap_target_image_hint'),
+          faceImageLabel: t('face_swap_face_image_label'),
+          faceImageHint: t('face_swap_face_image_hint'),
           run: t('run'),
           running: t('running'),
           queued: t('queued'),

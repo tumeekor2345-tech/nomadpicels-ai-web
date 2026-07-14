@@ -17,11 +17,12 @@ import {
   STYLE_PRESETS,
 } from '@/libs/ImagePresets';
 import type { NanoBanana2Resolution } from '@/libs/Pricing';
-import { CREDIT_COST, FLUX_ENGINE_CREDIT_COST, NANOBANANA2_RESOLUTION_CREDIT_COST, wanCreditCost } from '@/libs/Pricing';
+import { CREDIT_COST, FACE_SWAP_PRO_CREDIT_COST, FLUX_ENGINE_CREDIT_COST, NANOBANANA2_RESOLUTION_CREDIT_COST, wanCreditCost } from '@/libs/Pricing';
 import { buildFinalModelPrompt } from '@/libs/PromptPipeline';
 import {
   buildFaceSwapInput,
   buildFluxImg2ImgInput,
+  buildNanoBanana2FaceSwapInput,
   buildQwenImageInput,
   buildRunPodFluxDevInput,
   buildRunPodFluxSchnellInput,
@@ -204,6 +205,19 @@ export async function POST(request: Request) {
     );
   }
 
+  // Face Swap's "2 зураг" (swap) mode — added 2026-07-15, see
+  // buildNanoBanana2FaceSwapInput() in src/libs/RunPod.ts for why this reuses
+  // the Nano Banana 2 Edit Public Endpoint instead of a dedicated worker.
+  // `body.imageUrl` above is the target/background photo in this mode;
+  // `body.faceImageUrl` is the separate face-only reference.
+  const usingFaceSwapSwapMode = body.kind === 'face_swap' && body.mode === 'swap';
+  if (usingFaceSwapSwapMode && (!body.faceImageUrl || typeof body.faceImageUrl !== 'string')) {
+    return NextResponse.json(
+      { error: 'faceImageUrl is required in swap mode.' },
+      { status: 400 },
+    );
+  }
+
   // The AI Image (Flux) generator's "add reference" feature reuses the same
   // img2img workflow as Photo Restore — composition/subject-guided
   // generation, not face-consistency (that would need IP-Adapter, which the
@@ -260,7 +274,9 @@ export async function POST(request: Request) {
       : FLUX_ENGINE_CREDIT_COST[fluxEngine]
     : body.kind === 'wan'
       ? wanCreditCost(typeof body.durationSeconds === 'number' ? body.durationSeconds : 5)
-      : CREDIT_COST[body.kind as keyof typeof CREDIT_COST];
+      : usingFaceSwapSwapMode
+        ? FACE_SWAP_PRO_CREDIT_COST
+        : CREDIT_COST[body.kind as keyof typeof CREDIT_COST];
   const paidWithCredits = isAdmin ? false : await trySpendCredits(userId, creditCost);
 
   if (!isAdmin && !paidWithCredits) {
@@ -442,6 +458,30 @@ export async function POST(request: Request) {
     }
 
     // kind === 'face_swap'
+    if (usingFaceSwapSwapMode) {
+      // "2 зураг" mode — see buildNanoBanana2FaceSwapInput() comment for why
+      // this calls the Nano Banana 2 Edit Public Endpoint instead of the
+      // dedicated comfyui-faceswap-sdxl worker used by style mode below.
+      const swapPrompt = 'Face swap: replace the face in the target photo with the uploaded face, keep everything else unchanged.';
+      const input = buildNanoBanana2FaceSwapInput({
+        targetImageUrl: body.imageUrl,
+        faceImageUrl: body.faceImageUrl,
+      });
+
+      const job = await submitRunPodPublicJob('google-nano-banana-2-edit', input);
+
+      const [row] = await db.insert(generationSchema).values({
+        ownerId: userId,
+        orgId: orgId ?? null,
+        kind: 'face_swap',
+        prompt: swapPrompt,
+        jobId: job.id,
+        status: job.status,
+      }).returning({ id: generationSchema.id });
+
+      return NextResponse.json({ kind: 'face_swap', jobId: job.id, status: job.status, generationId: row?.id });
+    }
+
     // Style id comes from the client (a short id, e.g. "deel"), but the
     // actual prompt text is always resolved server-side from
     // FACE_SWAP_STYLE_PROMPTS — the client can never inject arbitrary

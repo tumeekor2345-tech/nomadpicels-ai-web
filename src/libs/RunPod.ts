@@ -385,6 +385,35 @@ export function buildRunPodNanoBanana2EditInput(params: {
   };
 }
 
+/**
+ * Face Swap's "2 зураг" (swap) mode — added 2026-07-15. The original Face
+ * Swap tool (buildFaceSwapInput() below, comfyui-faceswap-sdxl) can only
+ * GENERATE a brand new portrait from a text prompt using one reference face
+ * — it has no way to take an existing photo and swap just the face while
+ * keeping the pose/background/clothing, which is what the user asked for
+ * after seeing imagine.art's "Target Image" + "Your Face" layout. A true
+ * pixel-level swap-in-place (ReActor/inswapper-style) would need a whole new
+ * dedicated RunPod endpoint deployed — instead this reuses the ALREADY
+ * DEPLOYED `google-nano-banana-2-edit` Public Endpoint (same one the AI
+ * Image tool's Top-tier engine uses): Nano Banana 2 is Google's
+ * instruction-following multimodal image editor and accepts multiple
+ * reference images in its `images` array, so handing it the target photo
+ * first and the face photo second with an explicit instruction gets a real
+ * "replace only the face" edit without provisioning any new infrastructure.
+ */
+export function buildNanoBanana2FaceSwapInput(params: {
+  targetImageUrl: string;
+  faceImageUrl: string;
+  resolution?: '1k' | '2k' | '4k';
+}) {
+  return {
+    images: [params.targetImageUrl, params.faceImageUrl],
+    prompt: 'Replace the face of the person in the first image with the face shown in the second image. Keep the first image\'s pose, body, clothing, background, and lighting exactly the same — change only the face and identity to match the second image.',
+    resolution: params.resolution ?? '1k',
+    output_format: 'png',
+  };
+}
+
 /** `qwen-image-t2i` — Qwen Image, text-to-image only "AI Image" engine.
  * Added 2026-07-15 alongside `wan-2-6-t2i` at the user's request. No
  * reference-image (edit) mode on this endpoint — /api/generate always calls

@@ -14,7 +14,11 @@ import { HistoryStrip } from './HistoryStrip';
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
+type FaceSwapMode = 'style' | 'swap';
+
 type Labels = {
+  modeStyleLabel: string;
+  modeSwapLabel: string;
   styleLabel: string;
   styleLabels: Record<FaceSwapStyleId, string>;
   imageUrlLabel: string;
@@ -37,6 +41,14 @@ type Labels = {
   uploadRemove: string;
   uploadOrUrlDivider: string;
   uploadFailed: string;
+  // "2 зураг" (swap) mode, added 2026-07-15 — mirrors imagine.art's Target
+  // Image + Your Face layout. Reuses the Nano Banana 2 Edit engine instead
+  // of a dedicated new RunPod endpoint — see buildNanoBanana2FaceSwapInput()
+  // in src/libs/RunPod.ts for the full reasoning.
+  targetImageLabel: string;
+  targetImageHint: string;
+  faceImageLabel: string;
+  faceImageHint: string;
   run: string;
   running: string;
   queued: string;
@@ -49,13 +61,102 @@ type Labels = {
   historyEmpty: string;
 };
 
+/** One upload slot: shows a preview thumbnail with a remove button once a
+ * file's been picked (and uploaded to /api/uploads), or an "upload" button
+ * before that. Shared between the single style-mode upload and the two
+ * swap-mode uploads (target + face) to avoid tripling this JSX. */
+function UploadSlot(props: {
+  label: string;
+  buttonLabel: string;
+  removeLabel: string;
+  preview: string | null;
+  uploading: boolean;
+  onPick: (file: File) => void;
+  onClear: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) {
+      props.onPick(file);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label>{props.label}</Label>
+      {props.preview
+        ? (
+            <div className="relative w-fit">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={props.preview}
+                alt=""
+                className="h-28 w-28 rounded-md object-cover"
+              />
+              {!props.uploading && (
+                <button
+                  type="button"
+                  onClick={props.onClear}
+                  aria-label={props.removeLabel}
+                  className="
+                    absolute -right-2 -top-2 flex size-6 items-center
+                    justify-center rounded-full bg-destructive
+                    text-destructive-foreground
+                  "
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+              {props.uploading && (
+                <div className="
+                  absolute inset-0 flex items-center justify-center
+                  rounded-md bg-black/40 text-[10px] text-white
+                "
+                >
+                  ...
+                </div>
+              )}
+            </div>
+          )
+        : (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => inputRef.current?.click()}
+            >
+              {props.buttonLabel}
+            </Button>
+          )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleChange}
+      />
+    </div>
+  );
+}
+
 export const FaceSwapWorkspace = (props: { labels: Labels }) => {
   const { labels } = props;
+  const [mode, setMode] = useState<FaceSwapMode>('style');
   const [style, setStyle] = useState<FaceSwapStyleId>(DEFAULT_FACE_SWAP_STYLE);
+
+  // Style mode's single upload, and swap mode's "Target Image" (the
+  // background/pose photo the face gets placed into).
   const [imageUrl, setImageUrl] = useState('');
   const [uploadedPreview, setUploadedPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const uploadInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Swap mode's second upload — the face to insert.
+  const [faceImageUrl, setFaceImageUrl] = useState('');
+  const [facePreview, setFacePreview] = useState<string | null>(null);
+  const [faceUploading, setFaceUploading] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -82,8 +183,14 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
     if (data.status === 'COMPLETED') {
       setSubmitting(false);
       setStatusText(null);
+      // Style mode (comfyui-faceswap-sdxl) returns { image_base64 }; swap
+      // mode (Nano Banana 2 Edit, a RunPod Public Endpoint) returns
+      // { result: <url> } instead — see history/route.ts's comment on the
+      // same shape.
       if (data.output?.image_base64) {
         setResultSrc(`data:image/png;base64,${data.output.image_base64}`);
+      } else if (typeof data.output?.result === 'string') {
+        setResultSrc(data.output.result);
       } else {
         setErrorText(labels.failed);
       }
@@ -102,19 +209,18 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
     pollTimer.current = setTimeout(pollStatus, POLL_INTERVAL_MS, jobId, startedAt);
   };
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) {
-      return;
-    }
-
+  const uploadFile = async (
+    file: File,
+    setPreview: (v: string | null) => void,
+    setUrl: (v: string) => void,
+    setBusy: (v: boolean) => void,
+  ) => {
     setErrorText(null);
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUrl = reader.result as string;
-      setUploadedPreview(dataUrl);
-      setUploading(true);
+      setPreview(dataUrl);
+      setBusy(true);
       try {
         const res = await fetch('/api/uploads', {
           method: 'POST',
@@ -125,20 +231,15 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
         if (!res.ok || !data.url) {
           throw new Error(data.error ?? 'upload failed');
         }
-        setImageUrl(data.url);
+        setUrl(data.url);
       } catch {
         setErrorText(labels.uploadFailed);
-        setUploadedPreview(null);
+        setPreview(null);
       } finally {
-        setUploading(false);
+        setBusy(false);
       }
     };
     reader.readAsDataURL(file);
-  };
-
-  const clearUpload = () => {
-    setUploadedPreview(null);
-    setImageUrl('');
   };
 
   const handleRun = async () => {
@@ -150,10 +251,14 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
     setSubmitting(true);
     setStatusText(labels.queued);
 
+    const body = mode === 'swap'
+      ? { kind: 'face_swap', mode: 'swap', imageUrl, faceImageUrl }
+      : { kind: 'face_swap', mode: 'style', imageUrl, style };
+
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: 'face_swap', imageUrl, style }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
 
@@ -167,130 +272,143 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
     pollStatus(data.jobId, Date.now());
   };
 
+  const canRun = mode === 'swap'
+    ? Boolean(imageUrl) && Boolean(faceImageUrl)
+    : Boolean(imageUrl);
+
   return (
-    <div className="
-      grid grid-cols-1 gap-4
-      lg:grid-cols-[380px_1fr]
-    "
-    >
-      {/* Left: configuration */}
-      <div className="flex flex-col gap-4 rounded-md bg-card p-5">
-        <div className="flex flex-col gap-1.5">
-          <Label>{labels.styleLabel}</Label>
-          <div className="grid grid-cols-2 gap-2">
-            {FACE_SWAP_STYLE_IDS.map(id => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setStyle(id)}
-                className={cn(
-                  `
-                    flex flex-col overflow-hidden rounded-md border-2 text-left
-                    transition-colors
-                  `,
-                  style === id ? 'border-primary' : 'border-transparent',
-                )}
-              >
-                <div className="aspect-square w-full overflow-hidden bg-muted">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={FACE_SWAP_STYLE_IMAGES[id]}
-                    alt={labels.styleLabels[id]}
-                    className="size-full object-cover"
-                  />
-                </div>
-                <div className={cn(
-                  'px-1.5 py-1 text-xs font-medium',
-                  style === id
-                    ? 'bg-primary text-primary-foreground'
-                    : `bg-muted`,
-                )}
-                >
-                  {labels.styleLabels[id]}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label>{labels.uploadLabel}</Label>
-          {uploadedPreview
-            ? (
-                <div className="relative w-fit">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={uploadedPreview}
-                    alt=""
-                    className="h-28 w-28 rounded-md object-cover"
-                  />
-                  {!uploading && (
-                    <button
-                      type="button"
-                      onClick={clearUpload}
-                      aria-label={labels.uploadRemove}
-                      className="
-                        absolute -right-2 -top-2 flex size-6 items-center
-                        justify-center rounded-full bg-destructive
-                        text-destructive-foreground
-                      "
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  )}
-                  {uploading && (
-                    <div className="
-                      absolute inset-0 flex items-center justify-center
-                      rounded-md bg-black/40 text-[10px] text-white
-                    "
-                    >
-                      ...
-                    </div>
-                  )}
-                </div>
-              )
-            : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => uploadInputRef.current?.click()}
-                >
-                  {labels.uploadButton}
-                </Button>
+    <div className="flex flex-col gap-4">
+      <div className="
+        grid grid-cols-1 gap-4
+        lg:grid-cols-[380px_1fr]
+      "
+      >
+        {/* Left: configuration */}
+        <div className="flex flex-col gap-4 rounded-md bg-card p-5">
+          <div className="flex rounded-md border p-1">
+            <button
+              type="button"
+              onClick={() => setMode('style')}
+              className={cn(
+                'flex-1 rounded-sm py-1.5 text-sm font-medium transition-colors',
+                mode === 'style' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
               )}
-          <input
-            ref={uploadInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileChange}
+            >
+              {labels.modeStyleLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('swap')}
+              className={cn(
+                'flex-1 rounded-sm py-1.5 text-sm font-medium transition-colors',
+                mode === 'swap' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
+              )}
+            >
+              {labels.modeSwapLabel}
+            </button>
+          </div>
+
+          {mode === 'style' && (
+            <div className="flex flex-col gap-1.5">
+              <Label>{labels.styleLabel}</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {FACE_SWAP_STYLE_IDS.map(id => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setStyle(id)}
+                    className={cn(
+                      `
+                        flex flex-col overflow-hidden rounded-md border-2
+                        text-left transition-colors
+                      `,
+                      style === id ? 'border-primary' : 'border-transparent',
+                    )}
+                  >
+                    <div className="aspect-square w-full overflow-hidden bg-muted">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={FACE_SWAP_STYLE_IMAGES[id]}
+                        alt={labels.styleLabels[id]}
+                        className="size-full object-cover"
+                      />
+                    </div>
+                    <div className={cn(
+                      'px-1.5 py-1 text-xs font-medium',
+                      style === id
+                        ? 'bg-primary text-primary-foreground'
+                        : `bg-muted`,
+                    )}
+                    >
+                      {labels.styleLabels[id]}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <UploadSlot
+            label={mode === 'swap' ? labels.targetImageLabel : labels.uploadLabel}
+            buttonLabel={labels.uploadButton}
+            removeLabel={labels.uploadRemove}
+            preview={uploadedPreview}
+            uploading={uploading}
+            onPick={file => uploadFile(file, setUploadedPreview, setImageUrl, setUploading)}
+            onClear={() => {
+              setUploadedPreview(null);
+              setImageUrl('');
+            }}
           />
+          {mode === 'swap' && (
+            <div className="text-xs text-muted-foreground">{labels.targetImageHint}</div>
+          )}
+
+          {mode === 'style' && !uploadedPreview && (
+            <div className="flex flex-col gap-1.5">
+              <div className="text-xs text-muted-foreground">{labels.uploadOrUrlDivider}</div>
+              <Label htmlFor="face-swap-url">{labels.imageUrlLabel}</Label>
+              <Input
+                id="face-swap-url"
+                type="url"
+                value={imageUrl}
+                onChange={e => setImageUrl(e.target.value)}
+                placeholder={labels.imageUrlPlaceholder}
+              />
+            </div>
+          )}
+
+          {mode === 'swap' && (
+            <>
+              <UploadSlot
+                label={labels.faceImageLabel}
+                buttonLabel={labels.uploadButton}
+                removeLabel={labels.uploadRemove}
+                preview={facePreview}
+                uploading={faceUploading}
+                onPick={file => uploadFile(file, setFacePreview, setFaceImageUrl, setFaceUploading)}
+                onClear={() => {
+                  setFacePreview(null);
+                  setFaceImageUrl('');
+                }}
+              />
+              <div className="text-xs text-muted-foreground">{labels.faceImageHint}</div>
+            </>
+          )}
+
+          <Button
+            type="button"
+            disabled={submitting || uploading || faceUploading || !canRun}
+            onClick={handleRun}
+          >
+            {submitting ? labels.running : labels.run}
+          </Button>
+
+          {statusText && <div className="text-sm text-muted-foreground">{statusText}</div>}
+          {errorText && <div className="text-sm font-medium text-destructive">{errorText}</div>}
         </div>
 
-        {!uploadedPreview && (
-          <div className="flex flex-col gap-1.5">
-            <div className="text-xs text-muted-foreground">{labels.uploadOrUrlDivider}</div>
-            <Label htmlFor="face-swap-url">{labels.imageUrlLabel}</Label>
-            <Input
-              id="face-swap-url"
-              type="url"
-              value={imageUrl}
-              onChange={e => setImageUrl(e.target.value)}
-              placeholder={labels.imageUrlPlaceholder}
-            />
-          </div>
-        )}
-
-        <Button type="button" disabled={submitting || uploading || !imageUrl} onClick={handleRun}>
-          {submitting ? labels.running : labels.run}
-        </Button>
-
-        {statusText && <div className="text-sm text-muted-foreground">{statusText}</div>}
-        {errorText && <div className="text-sm font-medium text-destructive">{errorText}</div>}
-      </div>
-
-      {/* Right: result + history */}
-      <div className="flex flex-col gap-4">
+        {/* Right: result */}
         <div className="flex flex-col gap-3 rounded-md bg-card p-5">
           <div className="text-sm font-semibold">{labels.resultTitle}</div>
           {resultSrc
@@ -318,14 +436,16 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
                 <div className="text-sm text-muted-foreground">{labels.resultEmpty}</div>
               )}
         </div>
-
-        <HistoryStrip
-          kind="face_swap"
-          title={labels.historyTitle}
-          emptyLabel={labels.historyEmpty}
-          refreshKey={historyKey}
-        />
       </div>
+
+      {/* Below: wide gallery-style history, imagine.art-style */}
+      <HistoryStrip
+        kind="face_swap"
+        title={labels.historyTitle}
+        emptyLabel={labels.historyEmpty}
+        refreshKey={historyKey}
+        wide
+      />
     </div>
   );
 };

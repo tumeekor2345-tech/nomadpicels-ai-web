@@ -23,6 +23,10 @@ export const HistoryStrip = (props: {
   title: string;
   emptyLabel: string;
   refreshKey: number;
+  /** Wider gallery-style grid (more, smaller-relative columns) instead of
+   * the default narrow sidebar strip — added 2026-07-15 for Face Swap's
+   * imagine.art-style full-width history section below the form. */
+  wide?: boolean;
 }) => {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -63,10 +67,17 @@ export const HistoryStrip = (props: {
       )}
 
       {items.length > 0 && (
-        <div className="
-          grid grid-cols-3 gap-2
-          sm:grid-cols-4
-        "
+        <div className={props.wide
+          ? `
+            grid grid-cols-3 gap-3
+            sm:grid-cols-4
+            md:grid-cols-5
+            lg:grid-cols-6
+          `
+          : `
+            grid grid-cols-3 gap-2
+            sm:grid-cols-4
+          `}
         >
           {items.map((item) => {
             const image = item.images?.[0];

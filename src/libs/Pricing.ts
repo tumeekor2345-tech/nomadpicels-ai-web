@@ -107,6 +107,21 @@ export const CREDIT_COST = {
 } as const;
 
 /**
+ * Face Swap's "2 зураг" (swap) mode — added 2026-07-15 at the user's request
+ * to mirror imagine.art's Target Image + Your Face layout. Unlike the
+ * original style-preset mode (comfyui-faceswap-sdxl, flat 3 credits, GENERATES
+ * a new portrait from a text prompt), swap mode reuses the AI Image tool's
+ * Top-tier engine (`google-nano-banana-2-edit` RunPod Public Endpoint —
+ * see buildNanoBanana2FaceSwapInput() in src/libs/RunPod.ts) so no new RunPod
+ * endpoint had to be deployed — Nano Banana 2 is a general
+ * instruction-following image editor capable of a real "replace only the
+ * face, keep the rest of the photo" edit given two reference images. Priced
+ * the same as Nano Banana 2 Edit @ 1K (see NANOBANANA2_RESOLUTION_CREDIT_COST
+ * below) since it's the exact same endpoint/cost.
+ */
+export const FACE_SWAP_PRO_CREDIT_COST = 6;
+
+/**
  * Per-engine credit cost for the "AI Image" tool's 3-way selector. Priced
  * against RunPod Hub's official Public Endpoint rates
  * (docs.runpod.io/public-endpoints/reference) and the lowest per-credit

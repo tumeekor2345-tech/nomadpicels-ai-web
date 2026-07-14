@@ -49,8 +49,16 @@ export async function GET(request: Request) {
           // Face Swap (comfyui-faceswap-sdxl) returns { image_base64: "..." }.
           images = [{ filename: `${row.kind}-${row.id}.png`, type: 'base64', data: parsed.image_base64 }];
         } else if (typeof parsed?.result === 'string') {
-          // Wan 2.2 (Hub endpoint) returns { cost, result: <video url> }.
-          videoUrl = parsed.result;
+          // RunPod Public Endpoint jobs return { cost, result: <url> } for
+          // every media type — Wan 2.2 puts a video url there, Nano Banana 2
+          // (used e.g. by Face Swap's "2 зураг" mode, added 2026-07-15 — see
+          // buildNanoBanana2FaceSwapInput() in src/libs/RunPod.ts) puts an
+          // image url there. Only 'wan' rows are actually video.
+          if (row.kind === 'wan') {
+            videoUrl = parsed.result;
+          } else {
+            images = [{ filename: `${row.kind}-${row.id}.png`, type: 'url', data: parsed.result }];
+          }
         } else {
           rawOutput = parsed;
         }
