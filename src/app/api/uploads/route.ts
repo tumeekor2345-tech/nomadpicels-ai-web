@@ -28,7 +28,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'dataUrl (a data: URI) is required.' }, { status: 400 });
   }
 
-  const match = /^data:([^;]+);base64,(.+)$/s.exec(dataUrl);
+  // No `s` (dotAll) flag — that requires an es2018+ TS target, and base64
+  // payloads never contain newlines anyway, so a plain `.` already matches
+  // every character we need to.
+  const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
 
   if (!match) {
     return NextResponse.json({ error: 'dataUrl must be a base64-encoded data: URI.' }, { status: 400 });
