@@ -183,14 +183,22 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
     if (data.status === 'COMPLETED') {
       setSubmitting(false);
       setStatusText(null);
-      // Style mode (comfyui-faceswap-sdxl) returns { image_base64 }; swap
-      // mode (Nano Banana 2 Edit, a RunPod Public Endpoint) returns
-      // { result: <url> } instead — see history/route.ts's comment on the
-      // same shape.
-      if (data.output?.image_base64) {
+      // Style mode (comfyui-faceswap-sdxl, a dedicated worker — status comes
+      // back raw/unnormalized) returns { image_base64 }. Swap mode (Nano
+      // Banana 2 Edit, a RunPod Public Endpoint) goes through
+      // getRunPodPublicJobStatus()'s normalization instead, which already
+      // wraps ANY image result (not just base64 ones) into
+      // `output.images: [{ type, data }]` — same shape GenerateForm.tsx
+      // reads for the AI Image tool. Checking `output.result` directly here
+      // was wrong: by the time it reaches the client, an image job's result
+      // has already been moved into `images`, so that check silently never
+      // matched and fell through to "failed" even though the job (and its
+      // history-strip entry) succeeded.
+      const firstImage = data.output?.images?.[0];
+      if (firstImage) {
+        setResultSrc(firstImage.type === 'base64' ? `data:image/png;base64,${firstImage.data}` : firstImage.data);
+      } else if (data.output?.image_base64) {
         setResultSrc(`data:image/png;base64,${data.output.image_base64}`);
-      } else if (typeof data.output?.result === 'string') {
-        setResultSrc(data.output.result);
       } else {
         setErrorText(labels.failed);
       }
