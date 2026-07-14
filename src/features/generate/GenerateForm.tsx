@@ -7,10 +7,16 @@ import type {
   StyleId,
 } from '@/libs/ImagePresets';
 import type { FluxEngineId } from '@/libs/Pricing';
-import { X } from 'lucide-react';
+import { CheckIcon, ChevronDownIcon, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -670,6 +676,58 @@ export const GenerateForm = (props: {
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Engine (загвар) dropdown — moved to the very top of the panel
+              2026-07-14 so it's the first decision the user makes, and
+              collapsed into a single-line dropdown (was a tall stacked list
+              of buttons) so picking a model doesn't push the rest of the
+              form down. Shows a checkmark (CheckIcon) next to whichever
+              engine is currently selected, matching the "хураагдсан ...
+              чек хийдэг" request. */}
+          {kind === 'flux' && (
+            <div className="flex flex-col gap-1.5">
+              <Label>{props.labels.engineLabel}</Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="
+                      flex w-full items-center justify-between rounded-md
+                      border border-input bg-transparent px-3 py-2 text-sm
+                    "
+                  >
+                    <span className="flex flex-col items-start text-left">
+                      <span className="font-medium">{props.labels.engineNames[engine]}</span>
+                      <span className="text-xs text-muted-foreground">{props.labels.engineHints[engine]}</span>
+                    </span>
+                    <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className="w-(--radix-dropdown-menu-trigger-width)"
+                >
+                  {FLUX_ENGINES.map(engineId => (
+                    <DropdownMenuItem
+                      key={engineId}
+                      onSelect={() => setEngine(engineId)}
+                    >
+                      <CheckIcon
+                        className={cn(
+                          'size-4 shrink-0',
+                          engine === engineId ? 'opacity-100' : 'opacity-0',
+                        )}
+                      />
+                      <span className="flex flex-col">
+                        <span className="font-medium">{props.labels.engineNames[engineId]}</span>
+                        <span className="text-xs text-muted-foreground">{props.labels.engineHints[engineId]}</span>
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="prompt">{props.labels.promptLabel}</Label>
             <Textarea
@@ -787,28 +845,6 @@ export const GenerateForm = (props: {
 
           {kind === 'flux' && (
             <>
-              <div className="flex flex-col gap-1.5">
-                <Label>{props.labels.engineLabel}</Label>
-                <div className="flex flex-col gap-2">
-                  {FLUX_ENGINES.map(engineId => (
-                    <button
-                      key={engineId}
-                      type="button"
-                      onClick={() => setEngine(engineId)}
-                      className={cn(
-                        'rounded-md border px-3 py-2 text-left text-sm',
-                        engine === engineId
-                          ? 'border-primary bg-primary/10'
-                          : 'border-input bg-transparent',
-                      )}
-                    >
-                      <div className="font-medium">{props.labels.engineNames[engineId]}</div>
-                      <div className="text-xs text-muted-foreground">{props.labels.engineHints[engineId]}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <div className="flex flex-col gap-1.5">
                 <Label>{props.labels.styleLabel}</Label>
                 <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
