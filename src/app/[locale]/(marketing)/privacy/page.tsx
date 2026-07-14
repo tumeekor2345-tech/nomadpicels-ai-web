@@ -40,8 +40,9 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
         body: [
           'Clerk — authentication and account management.',
           'RunPod — receives your prompts and, for video, your source image, to run the Flux and Wan 2.2 models on their GPU infrastructure. This is necessary for the Service to work.',
-          'Sentry — receives technical error data (not your prompts) to help us fix crashes.',
-          'QPay / SocialPay / bank card processors — receive payment details necessary to process a purchase, once payments are enabled.',
+          'Vercel — hosts the Service and provides aggregate, cookieless traffic analytics (Vercel Analytics) and page-speed measurements (Speed Insights); this doesn\'t include your prompts or generated content.',
+          'Sentry — receives technical error data (not your prompts) to help us fix crashes, once enabled.',
+          'QPay / SocialPay / bank card processors — receive payment details necessary to process a purchase.',
           'We don\'t sell your personal data.',
         ],
       },
@@ -87,6 +88,12 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
           'Questions about this Privacy Policy? Contact us through the details on our Contact page.',
         ],
       },
+      {
+        heading: '11. Service operator',
+        body: [
+          'NomadPixels AI is operated by Tuvshinjargal Tumenjargal, a registered sole proprietor in Mongolia (registration number: PIO88040311), who acts as the data controller for the personal data described in this Policy.',
+        ],
+      },
     ],
   },
   mn: {
@@ -114,8 +121,9 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
         body: [
           'Clerk — нэвтрэлт болон акаунтын удирдлага.',
           'RunPod — Flux болон Wan 2.2 загваруудыг GPU дэд бүтэц дээрээ ажиллуулахын тулд таны prompt, видеоны хувьд эх зургийг хүлээн авдаг. Энэ нь Үйлчилгээ ажиллахад зайлшгүй шаардлагатай.',
-          'Sentry — эвдрэл засахад туслах техникийн алдааны мэдээлэл (таны prompt биш) хүлээн авдаг.',
-          'QPay / SocialPay / банкны картын боловсруулагчид — төлбөр идэвхжсэний дараа худалдан авалтыг боловсруулахад шаардлагатай мэдээллийг хүлээн авна.',
+          'Vercel — Үйлчилгээг hosting хийж, нэрээ нууцалсан, cookie ашигладаггүй нийт хандалтын статистик (Vercel Analytics) болон хуудасны ачаалах хурдны хэмжилт (Speed Insights) гаргадаг; энэ нь таны prompt эсвэл үүсгэсэн агуулгыг агуулдаггүй.',
+          'Sentry — идэвхжсэний дараа эвдрэл засахад туслах техникийн алдааны мэдээлэл (таны prompt биш) хүлээн авдаг.',
+          'QPay / SocialPay / банкны картын боловсруулагчид — худалдан авалтыг боловсруулахад шаардлагатай төлбөрийн мэдээллийг хүлээн авна.',
           'Бид таны хувийн мэдээллийг зарахгүй.',
         ],
       },
@@ -159,6 +167,12 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
         heading: '10. Холбоо барих',
         body: [
           'Энэ Нууцлалын бодлоготой холбоотой асуулт байвал манай Холбоо барих хуудсан дахь мэдээллээр холбогдоно уу.',
+        ],
+      },
+      {
+        heading: '11. Үйлчилгээ эрхлэгч',
+        body: [
+          'NomadPixels AI-г Монгол улсад бүртгэлтэй хувь хүн бизнес эрхлэгч Тувшинжаргал Тумэнжаргал эрхэлдэг (регистрийн дугаар: PIO88040311) бөгөөд энэ бодлогод дурдсан хувийн мэдээллийн хариуцагч нь мөн юм.',
         ],
       },
     ],

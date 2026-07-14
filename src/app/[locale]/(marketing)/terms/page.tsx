@@ -56,6 +56,7 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
         heading: '6. Credits and payments',
         body: [
           'Credits are purchased in Mongolian tögrög (MNT) via QPay, SocialPay, or supported bank cards, and are consumed per generation. Except where required by Mongolian consumer-protection law, credits and payments are non-refundable once a generation has started.',
+          'If a generation fails due to a fault on our side (e.g. the processing provider errors out or never returns a result), the credit charged for that generation will be automatically returned to your balance. This does not apply if the output was delivered but you\'re simply unsatisfied with the result.',
           'Prices and included credits per plan are shown on our Pricing page and may change with notice.',
         ],
       },
@@ -101,6 +102,12 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
           'Questions about these Terms? Contact us through the details on our Contact page.',
         ],
       },
+      {
+        heading: '14. Service operator',
+        body: [
+          'NomadPixels AI is operated by Tuvshinjargal Tumenjargal, a registered sole proprietor in Mongolia (registration number: PIO88040311).',
+        ],
+      },
     ],
   },
   mn: {
@@ -144,6 +151,7 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
         heading: '6. Кредит ба төлбөр',
         body: [
           'Кредитийг QPay, SocialPay, эсвэл дэмжигдсэн банкны картаар төгрөгөөр худалдан авч, үүсгэлт тус бүрт зарцуулна. Монголын хэрэглэгч хамгааллын хуулиар шаардагдаагүй тохиолдолд, үүсгэлт эхэлсэн кредит, төлбөрийг буцаан олгохгүй.',
+          'Хэрэв бидний талын алдаанаас болж үүсгэлт амжилтгүй болвол (жишээ нь боловсруулах түнш алдаа гаргах эсвэл үр дүн буцаагаагүй), тухайн үүсгэлтэд зарцуулсан кредитийг таны үлдэгдэлд автоматаар буцаан оруулна. Харин үр дүн амжилттай гарсан ч танд таалагдаагүй тохиолдолд энэ хамаарахгүй.',
           'Багц тус бүрийн үнэ, багтсан кредитийг манай Үнийн хуудсанд харуулсан бөгөөд урьдчилан мэдэгдэж өөрчлөгдөж болно.',
         ],
       },
@@ -187,6 +195,12 @@ const content: Record<string, { title: string; updated: string; draftNotice: str
         heading: '13. Холбоо барих',
         body: [
           'Энэ нөхцөлтэй холбоотой асуулт байвал манай Холбоо барих хуудсан дахь мэдээллээр холбогдоно уу.',
+        ],
+      },
+      {
+        heading: '14. Үйлчилгээ эрхлэгч',
+        body: [
+          'NomadPixels AI-г Монгол улсад бүртгэлтэй хувь хүн бизнес эрхлэгч Тувшинжаргал Тумэнжаргал эрхэлдэг (регистрийн дугаар: PIO88040311).',
         ],
       },
     ],
