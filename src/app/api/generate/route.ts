@@ -236,6 +236,17 @@ export async function POST(request: Request) {
   let modelPrompt: string = body.prompt;
   if (needsUserPrompt && !hasOverride) {
     const pipelineResult = await buildFinalModelPrompt(body.prompt, enhanceEngineId);
+    // TEMPORARY diagnostic logging (2026-07-15) — investigating a report of
+    // wildly inconsistent/off-topic output for the same raw prompt ("монгол
+    // наадам" producing an unrelated woman's portrait, a horse rider, and
+    // isolated wrestlers across 3 separate generations). Remove once
+    // diagnosed. Visible in Vercel's Function logs for this request.
+    // eslint-disable-next-line no-console
+    console.log('[prompt-debug]', JSON.stringify({
+      engine: enhanceEngineId,
+      raw: body.prompt,
+      final: pipelineResult.ok ? pipelineResult.prompt : `BLOCKED:${pipelineResult.reason}`,
+    }));
     if (!pipelineResult.ok) {
       return NextResponse.json(
         { error: 'prompt_blocked', message: 'This prompt violates our content policy.' },
