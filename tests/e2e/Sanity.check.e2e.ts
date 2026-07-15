@@ -12,7 +12,5 @@ test.describe('Sanity', () => {
     test('should display the homepage', async ({ page }) => {
       await page.goto('/');
 
-      await expect(page.getByText('The perfect SaaS template to build')).toBeVisible();
+      await expect(page.getByText('Секундын дотор гайхалтай')).toBeVisible();
     });
-  });
-});
