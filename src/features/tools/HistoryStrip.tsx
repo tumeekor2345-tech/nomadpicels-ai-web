@@ -68,7 +68,6 @@ export const HistoryStrip = (props: {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.kind, props.refreshKey]);
 
   return (
@@ -111,7 +110,7 @@ export const HistoryStrip = (props: {
                         aria-label={props.viewLabel}
                         className="group relative block size-full"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {/* eslint-disable-next-line next/no-img-element */}
                         <img src={src} alt="" className="size-full object-cover" />
                         <span className="
                           absolute inset-0 flex items-center justify-center
@@ -150,7 +149,7 @@ export const HistoryStrip = (props: {
             className="flex max-h-full max-w-full flex-col items-center gap-3"
             onClick={e => e.stopPropagation()}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {/* eslint-disable-next-line next/no-img-element */}
             <img
               src={lightboxSrc.src}
               alt=""

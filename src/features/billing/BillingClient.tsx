@@ -238,7 +238,7 @@ export const BillingClient = (props: {
           </div>
 
           {checkout.qrImage && (
-            // eslint-disable-next-line @next/next/no-img-element
+            // eslint-disable-next-line next/no-img-element
             <img
               src={`data:image/png;base64,${checkout.qrImage}`}
               alt="QPay QR"

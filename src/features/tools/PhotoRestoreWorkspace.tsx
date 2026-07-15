@@ -135,7 +135,7 @@ export const PhotoRestoreWorkspace = (props: { labels: Labels }) => {
           {resultSrc
             ? (
                 <div className="flex flex-col gap-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* eslint-disable-next-line next/no-img-element */}
                   <img
                     src={resultSrc}
                     alt=""

@@ -2,6 +2,7 @@ import type { FluxEngineId, NanoBanana2Resolution } from '@/libs/Pricing';
 
 import type { EnhanceEngineId } from '@/libs/PromptEnhance';
 import type { ComfyUIWorkflow } from '@/libs/RunPod';
+import { Buffer } from 'node:buffer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { auth } from '@clerk/nextjs/server';

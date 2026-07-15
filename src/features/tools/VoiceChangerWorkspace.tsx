@@ -212,7 +212,6 @@ export const VoiceChangerWorkspace = (props: { labels: Labels }) => {
         {originalUrl && (
           <div className="flex flex-col gap-1.5">
             <div className="text-xs text-muted-foreground">{labels.playOriginal}</div>
-            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
             <audio
               key={originalUrl}
               src={originalUrl}
@@ -244,7 +243,6 @@ export const VoiceChangerWorkspace = (props: { labels: Labels }) => {
         {resultUrl
           ? (
               <div className="flex flex-col gap-2">
-                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                 <audio
                   key={resultUrl}
                   src={resultUrl}

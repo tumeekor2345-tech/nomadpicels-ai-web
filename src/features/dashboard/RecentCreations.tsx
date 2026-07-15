@@ -89,7 +89,7 @@ export const RecentCreations = (props: {
               >
                 <div className="aspect-square bg-muted">
                   {thumb && (
-                    // eslint-disable-next-line @next/next/no-img-element
+                    // eslint-disable-next-line next/no-img-element
                     <img
                       src={thumb}
                       alt={item.prompt}
@@ -97,7 +97,6 @@ export const RecentCreations = (props: {
                     />
                   )}
                   {!thumb && item.videoUrl && (
-                    // eslint-disable-next-line jsx-a11y/media-has-caption
                     <video
                       src={item.videoUrl}
                       className="size-full object-cover"

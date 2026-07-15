@@ -96,7 +96,7 @@ function UploadSlot(props: {
       {props.preview
         ? (
             <div className="relative w-fit">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {/* eslint-disable-next-line next/no-img-element */}
               <img
                 src={props.preview}
                 alt=""
@@ -108,9 +108,8 @@ function UploadSlot(props: {
                   onClick={props.onClear}
                   aria-label={props.removeLabel}
                   className="
-                    text-destructive-foreground absolute -top-2 -right-2 flex
-                    size-6 items-center justify-center rounded-full
-                    bg-destructive
+                    absolute -top-2 -right-2 flex size-6 items-center
+                    justify-center rounded-full bg-destructive text-white
                   "
                 >
                   <X className="size-3.5" />
@@ -347,7 +346,7 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
                       aspect-square w-full overflow-hidden bg-muted
                     "
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {/* eslint-disable-next-line next/no-img-element */}
                       <img
                         src={FACE_SWAP_STYLE_IMAGES[id]}
                         alt={labels.styleLabels[id]}
@@ -435,7 +434,7 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
           {resultSrc
             ? (
                 <div className="flex flex-col gap-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* eslint-disable-next-line next/no-img-element */}
                   <img
                     src={resultSrc}
                     alt=""

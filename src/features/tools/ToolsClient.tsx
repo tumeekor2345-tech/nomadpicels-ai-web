@@ -175,7 +175,7 @@ function ImageToolCard(props: {
 
       {resultSrc && (
         <div className="flex flex-col gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {/* eslint-disable-next-line next/no-img-element */}
           <img
             src={resultSrc}
             alt={props.title}
@@ -390,7 +390,6 @@ function VoiceChangerCard(props: { labels: ToolLabels }) {
       {originalUrl && (
         <div className="flex flex-col gap-1.5">
           <div className="text-xs text-muted-foreground">{labels.voicePlayOriginal}</div>
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <audio key={originalUrl} src={originalUrl} controls className="w-full" />
         </div>
       )}
@@ -415,7 +414,6 @@ function VoiceChangerCard(props: { labels: ToolLabels }) {
         <div className="flex flex-col gap-2">
           {/* key={resultUrl} forces a fresh <audio> element per result so the
            * browser always loads the new blob instead of reusing a cached one. */}
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <audio
             key={resultUrl}
             src={resultUrl}

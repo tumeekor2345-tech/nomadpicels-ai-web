@@ -384,7 +384,7 @@ export const GenerateForm = (props: {
                   : image.data;
                 return (
                   <div key={image.filename} className="flex flex-col gap-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {/* eslint-disable-next-line next/no-img-element */}
                     <img src={src} alt={image.filename} className="rounded-md" />
                     <a
                       href={src}
@@ -401,7 +401,6 @@ export const GenerateForm = (props: {
 
           {videoUrl && (
             <div className="mt-2 flex flex-col gap-2">
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
               <video src={videoUrl} controls className="max-w-full rounded-md" />
               <a
                 href={videoUrl}
@@ -436,21 +435,24 @@ export const GenerateForm = (props: {
                   sm:grid-cols-3
                 "
                 >
-                  {history.map(item => (
-                    <div
-                      key={item.id}
-                      className="flex flex-col gap-2 rounded-md bg-muted p-2"
-                    >
-                      {item.images?.[0] && (() => {
-                        const firstImage = item.images[0];
-                        const src = firstImage.type === 'base64'
+                  {history.map((item) => {
+                    const firstImage = item.images?.[0];
+                    const firstImageSrc = firstImage
+                      ? (firstImage.type === 'base64'
                           ? `data:image/png;base64,${firstImage.data}`
-                          : firstImage.data;
-                        return (
+                          : firstImage.data)
+                      : undefined;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex flex-col gap-2 rounded-md bg-muted p-2"
+                      >
+                        {firstImage && firstImageSrc && (
                           <button
                             type="button"
                             onClick={() => setLightboxImage({
-                              src,
+                              src: firstImageSrc,
                               filename: firstImage.filename,
                               caption: item.prompt,
                             })}
@@ -459,9 +461,9 @@ export const GenerateForm = (props: {
                             "
                             aria-label={props.labels.historyView}
                           >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            {/* eslint-disable-next-line next/no-img-element */}
                             <img
-                              src={src}
+                              src={firstImageSrc}
                               alt={item.prompt}
                               className="aspect-square rounded-md object-cover"
                             />
@@ -475,24 +477,23 @@ export const GenerateForm = (props: {
                               {props.labels.historyView}
                             </span>
                           </button>
-                        );
-                      })()}
-                      {item.videoUrl && (
-                        // eslint-disable-next-line jsx-a11y/media-has-caption
-                        <video
-                          src={item.videoUrl}
-                          controls
-                          className="rounded-md"
-                        />
-                      )}
-                      <div className="
-                        line-clamp-2 text-xs text-muted-foreground
-                      "
-                      >
-                        {item.prompt}
+                        )}
+                        {item.videoUrl && (
+                          <video
+                            src={item.videoUrl}
+                            controls
+                            className="rounded-md"
+                          />
+                        )}
+                        <div className="
+                          line-clamp-2 text-xs text-muted-foreground
+                        "
+                        >
+                          {item.prompt}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
         </div>
@@ -736,7 +737,7 @@ export const GenerateForm = (props: {
                 {referenceImage && (
                   <div className="flex flex-col gap-2">
                     <div className="relative w-fit">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {/* eslint-disable-next-line next/no-img-element */}
                       <img
                         src={referenceImage.dataUrl}
                         alt="reference"
@@ -871,7 +872,7 @@ export const GenerateForm = (props: {
             className="flex max-h-full max-w-full flex-col items-center gap-3"
             onClick={e => e.stopPropagation()}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {/* eslint-disable-next-line next/no-img-element */}
             <img
               src={lightboxImage.src}
               alt={lightboxImage.caption}
