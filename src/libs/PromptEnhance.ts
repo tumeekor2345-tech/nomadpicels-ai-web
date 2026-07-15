@@ -36,27 +36,33 @@ const ENHANCE_TIMEOUT_MS = 15000;
 const REFUSAL_MARKER = 'REFUSED';
 
 /**
- * System prompt design note (2026-07-10): this used to be a plain
- * "expand the idea, add some details, keep it under 70 words" instruction.
- * Rewritten at the user's explicit request to make Claude act as a
- * dedicated Flux.1 Schnell Prompt Engineer / Linguistic Engineer, following
- * four rules she specified directly:
- *   1. No generic technical quality buzzwords (8k, photorealistic, ultra
- *      detailed, cinematic lighting, etc.) — Flux responds poorly to
- *      keyword-stuffing; it wants natural descriptive language instead.
- *   2. Describe light/mood/atmosphere as concrete sensory description
- *      ("warm late-afternoon sunlight slants low across the field...")
- *      rather than naming a lighting style as a keyword.
- *   3. Any literal on-scene text (signs, labels) must be quoted exactly.
- *   4. The whole result must read as ONE flowing paragraph, never a
- *      comma-separated tag list.
- * This pairs with — and is a big part of why the earlier tight bust-crop
- * framing bug happened — the composition reinforcement work done the same
- * day (src/libs/CompositionReinforcement.ts): tag-soup prompts with
- * technical stopwords up front are exactly the kind of input that starves
- * Flux schnell's few-step sampler of real scene information. Natural,
- * concrete, single-paragraph descriptions are expected to compose better
- * with that fix, not fight it.
+ * System prompt design note (2026-07-10, revised 2026-07-16): this used to
+ * be a plain "expand the idea, add some details, keep it under 70 words"
+ * instruction, then rewritten as a dedicated Flux.1 Schnell Prompt
+ * Engineer/Linguistic Engineer persona with 4 rules. Revised again
+ * 2026-07-16 after the user reported live prompt-enhancement quality
+ * complaints ("хэрэглэгчийн промт сайжируулалт буруу хийгдээд байна") and
+ * supplied a broader replacement persona covering all the engines the app
+ * now actually uses (Nano Banana 2, Flux, Qwen Image, Wan — see
+ * src/libs/RunPod.ts), richer expansion categories (pose, expression,
+ * materials, etc.), and explicit Mongolian-culture preservation rules.
+ *
+ * ONE rule from that replacement was deliberately NOT adopted: it asked to
+ * proactively include buzzwords like "photorealistic", "8k", "masterpiece",
+ * "cinematic lighting". That's kept banned — live testing on 2026-07-10
+ * (see src/libs/CompositionReinforcement.ts) established that exactly this
+ * kind of keyword-stuffing starves Flux schnell's few-step sampler of real
+ * scene information and was a direct cause of a composition/framing bug.
+ * Confirmed with the user before finalizing (2026-07-16) — buzzword ban
+ * stays.
+ *
+ * Also dropped from the replacement: the literal on-screen "avoid blurry /
+ * bad anatomy / extra fingers / watermark / ..." negative-prompt keyword
+ * list. That style of instruction is meant for a true negative_prompt input
+ * on the image-generation call itself, not for Claude's descriptive
+ * enhancement text — appending it here risked Claude echoing those words
+ * into the visible prompt. If real negative-prompt support is wanted, it
+ * belongs in the RunPod/Fal input builders, not here.
  */
 function systemPromptFor(kind: 'flux' | 'wan'): string {
   const mediumNote = kind === 'wan'
@@ -64,17 +70,20 @@ function systemPromptFor(kind: 'flux' | 'wan'): string {
     : 'This description is for a text-to-IMAGE model: describe a single still moment, not action unfolding over time.';
 
   return [
-    'You are Bold, a highly experienced Prompt Engineer and Linguistic Engineer specializing in prompts for the Flux.1 Schnell image generation model, working for a Mongolian AI image/video generation platform.',
-    'Users type short, vague ideas for what they want to generate, in Mongolian or English. Your job is to expand each idea into ONE long, detailed, vivid description written as natural, fluent English prose — the way a person would describe a photograph aloud, not a list of tags or keywords.',
+    'You are Bold, the world\'s best AI Image Prompt Engineer, working for a Mongolian AI image/video generation platform that uses Nano Banana 2, Flux, Qwen Image, and Wan.',
+    'Your job is NOT to translate literally. Users type short, vague ideas — often just one or two words, in Mongolian or English. Infer the most likely visual scene and expand it into ONE long, vivid description written as natural, fluent English prose — the way a person would describe a photograph aloud, not a list of tags or keywords.',
+    'Never write a story or biography, never explain your reasoning, and only describe what should visibly appear in the image.',
+    'If the user writes in Mongolian, think in Mongolian first, then produce the result ONLY in English — never output Mongolian.',
     'Follow these rules strictly:',
-    '1. Never use generic technical quality buzzwords or camera-spec shorthand such as "8k", "photorealistic", "ultra detailed", "cinematic lighting", "highly detailed", "masterpiece", "trending on artstation", or similar stock phrases — Flux responds poorly to keyword-stuffing like this.',
+    '1. Never use generic technical quality buzzwords or camera-spec shorthand such as "8k", "photorealistic", "ultra detailed", "cinematic lighting", "highly detailed", "masterpiece", "trending on artstation", or similar stock phrases — these models respond poorly to keyword-stuffing like this; describe the scene concretely instead.',
     '2. Instead of naming a lighting or mood keyword, describe concretely what the light and atmosphere actually look like and how they fall across the scene (for example, instead of "cinematic lighting" write something like "warm late-afternoon sunlight slants low across the field, casting long amber shadows").',
-    '3. If the idea implies visible text, a sign, a label, or writing appearing in the scene, quote that exact text using double quotes (for example: a neon sign that reads "Ulaanbaatar").',
-    '4. Write the entire result as ONE flowing paragraph of connected sentences describing subject, setting, light, atmosphere, and composition — never a comma-separated list of fragments.',
+    '3. Expand naturally across: subject, appearance, pose, expression, clothing, environment, lighting, camera angle, lens, composition, color palette, atmosphere, materials, and fine detail — but stay faithful to what the user actually asked for; add sensible, concrete detail without inventing details that contradict or wildly diverge from their idea.',
+    '4. Always preserve authentic culture — never replace traditional clothing with generic or Western equivalents, and never westernize a cultural scene. For example: Mongolian wrestling should be described with real zodog/shuudag wrestling attire and Naadam Festival context, not a generic deel; a samurai should wear authentic period armor, not fantasy armor.',
+    '5. Write the entire result as ONE flowing paragraph of connected sentences — never sections, numbering, markdown, or a comma-separated list of fragments.',
     mediumNote,
-    'Stay faithful to what the user actually asked for — add sensible, concrete detail, but do not invent details that contradict or wildly diverge from their idea.',
+    'Do not write biographies, do not explain history, do not describe invisible internal emotions, and do not repeat the same information twice.',
     `If the request describes sexual content involving minors, non-consensual sexual content, or other clearly disallowed content, respond with exactly the single word ${REFUSAL_MARKER} and nothing else.`,
-    'Respond with ONLY the finished English prompt paragraph — no preamble, no greeting, no labels, no quotation marks wrapping the whole paragraph, no explanation.',
+    'Respond with ONLY the finished English prompt paragraph — no preamble, no greeting, no labels, no quotation marks, no explanation.',
   ].join(' ');
 }
 
