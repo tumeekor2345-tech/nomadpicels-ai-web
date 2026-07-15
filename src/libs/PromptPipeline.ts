@@ -1,3 +1,4 @@
+import type { EnhanceEngineId } from '@/libs/PromptEnhance';
 import { reinforceFullBodyFraming } from '@/libs/CompositionReinforcement';
 import { enhancePrompt } from '@/libs/PromptEnhance';
 import { translateMongolianToEnglish } from '@/libs/Translate';
@@ -8,7 +9,7 @@ import { translateMongolianToEnglish } from '@/libs/Translate';
  *
  * Revised 2026-07-16: previously this only translated + reinforced framing,
  * and a separate manual "Санаагаа сайжруул" button (GenerateForm.tsx) let the
- * user optionally run Claude Haiku's fuller PromptEnhance.ts expansion,
+ * user optionally run PromptEnhance.ts's fuller (then Claude Haiku, now Gemini 3.5 Flash) expansion,
  * preview it, and approve it before it replaced their prompt. The user asked
  * to drop that manual step entirely: "энэ промт сайжируулалт гэж хэрэггүй
  * байна. хэрэглэгчийн өгсөн түлхүүр үгүүдийг ашиглан авто промтоо тааруулж
@@ -21,7 +22,7 @@ import { translateMongolianToEnglish } from '@/libs/Translate';
  *
  * The pipeline is now 3 stages, each independently understood:
  *
- *   1. ENHANCE — src/libs/PromptEnhance.ts: Claude Haiku expands the user's
+ *   1. ENHANCE — src/libs/PromptEnhance.ts: Gemini 3.5 Flash expands the user's
  *      short/vague idea (Mongolian or English) into one detailed English
  *      description, following the Bold persona rules (no buzzwords, real
  *      cultural detail, single flowing paragraph). This already handles
@@ -33,7 +34,15 @@ import { translateMongolianToEnglish } from '@/libs/Translate';
  *      (disallowed content), that block is propagated up as
  *      `{ ok: false, reason: 'blocked' }` rather than silently falling back
  *      — silently falling back to the raw prompt here would bypass the
- *      semantic safety check.
+ *      semantic safety check. As of 2026-07-15 this stage is tailored per
+ *      the SPECIFIC downstream engine (`EnhanceEngineId`: flux_schnell,
+ *      flux_dev, nanobanana2, qwen_image, wan_t2i, wan_i2v) rather than just
+ *      the broad flux/wan `kind` — see src/libs/PromptEnhance.ts's
+ *      ENGINE_PROFILES for why each engine gets its own word budget. The
+ *      caller (src/app/api/generate/route.ts) resolves the actual engine
+ *      that will run (accounting for fallbacks like Nano Banana 2 -> Flux
+ *      Dev when no reference image is attached) and passes that resolved id
+ *      in here.
  *   2. REINFORCE — src/libs/CompositionReinforcement.ts: if full-body
  *      framing was requested, adds the framing anchor, keyed off the
  *      ORIGINAL (pre-enhancement) prompt so the Mongolian keyword check
@@ -54,8 +63,8 @@ export type FinalPromptResult
   = | { ok: true; prompt: string }
     | { ok: false; reason: 'blocked' };
 
-export async function buildFinalModelPrompt(originalPrompt: string, kind: 'flux' | 'wan'): Promise<FinalPromptResult> {
-  const enhanced = await enhancePrompt(originalPrompt, kind);
+export async function buildFinalModelPrompt(originalPrompt: string, engineId: EnhanceEngineId): Promise<FinalPromptResult> {
+  const enhanced = await enhancePrompt(originalPrompt, engineId);
 
   if (enhanced.ok) {
     return { ok: true, prompt: reinforceFullBodyFraming(originalPrompt, enhanced.enhancedPrompt) };
@@ -65,7 +74,7 @@ export async function buildFinalModelPrompt(originalPrompt: string, kind: 'flux'
     return { ok: false, reason: 'blocked' };
   }
 
-  // 'not_configured' or 'failed' — ANTHROPIC_API_KEY missing, timeout, or
+  // 'not_configured' or 'failed' — GEMINI_API_KEY missing, timeout, or
   // some other hiccup. Fall back to the older translate+reinforce pipeline
   // so generation still works.
   const translated = await translateMongolianToEnglish(originalPrompt);

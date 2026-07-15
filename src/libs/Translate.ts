@@ -10,22 +10,24 @@
  * server-side, right before it's sent to RunPod, so users can type prompts
  * in Mongolian naturally.
  *
- * MN->EN translation is done via Claude Haiku first (see
- * claudeTranslateMongolianToEnglish() below), falling back to MyMemory's
- * free public translation API if Claude is unavailable/fails. This two-tier
- * setup exists because MyMemory was found (live, 2026-07-09) to badly
- * mistranslate Mongolian cultural/clothing vocabulary — e.g. "Монгол дээл"
- * ("Mongolian deel", the traditional robe) came back as "Mongolyn
- * Monastery", and "Монгол дээлтэй эмэгтэйийн зураг" came back as "Mongolian
- * Embroidery Thread". Since "дээл" never survived translation, Flux never
- * saw the word "deel" at all and generated generic/unrelated
- * fur-coat-and-brocade imagery instead of an actual deel — this was reported
- * by a user testing the new Mongolian-style LoRA and traced here by directly
- * querying the MyMemory API. Claude Haiku (already used by
- * src/libs/PromptEnhance.ts, so ANTHROPIC_API_KEY is already configured)
- * translates such terms correctly and is tried first; MyMemory remains as a
- * free fallback if the Anthropic API key is missing or the call fails, so
- * translation — and therefore generation — never hard-fails.
+ * MN->EN translation is done via Gemini 3.5 Flash first (see
+ * geminiTranslateMongolianToEnglish() below — ran on Claude Haiku until
+ * 2026-07-16, switched at the user's request alongside
+ * src/libs/PromptEnhance.ts, see that module's comment for why), falling
+ * back to MyMemory's free public translation API if Gemini is
+ * unavailable/fails. This two-tier setup exists because MyMemory was found
+ * (live, 2026-07-09) to badly mistranslate Mongolian cultural/clothing
+ * vocabulary — e.g. "Монгол дээл" ("Mongolian deel", the traditional robe)
+ * came back as "Mongolyn Monastery", and "Монгол дээлтэй эмэгтэйийн зураг"
+ * came back as "Mongolian Embroidery Thread". Since "дээл" never survived
+ * translation, Flux never saw the word "deel" at all and generated
+ * generic/unrelated fur-coat-and-brocade imagery instead of an actual deel —
+ * this was reported by a user testing the new Mongolian-style LoRA and
+ * traced here by directly querying the MyMemory API. Gemini (GEMINI_API_KEY,
+ * already configured for src/libs/PromptEnhance.ts) translates such terms
+ * correctly and is tried first; MyMemory remains as a free fallback if the
+ * Gemini API key is missing or the call fails, so translation — and
+ * therefore generation — never hard-fails.
  */
 
 // Mongolian Cyrillic uses the standard Cyrillic block plus a couple of
@@ -81,11 +83,11 @@ async function myMemoryTranslate(text: string, langpair: string): Promise<string
   }
 }
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
-const CLAUDE_TRANSLATE_TIMEOUT_MS = 8000;
+const GEMINI_MODEL = 'gemini-3.5-flash';
+const GEMINI_TRANSLATE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_TRANSLATE_TIMEOUT_MS = 8000;
 
-const CLAUDE_TRANSLATE_SYSTEM_PROMPT = [
+const GEMINI_TRANSLATE_SYSTEM_PROMPT = [
   'Translate the given Mongolian (Cyrillic) text to English.',
   'This text is a prompt for an AI image/video generator, so accuracy on concrete visual and cultural terms matters a lot more than fluency — a wrong translation of a clothing or object name will make the generator draw the wrong thing entirely.',
   'In particular: "дээл" always means "deel" (the traditional Mongolian robe/coat with a diagonal front closure and sash belt) — never "monastery", "embroidery", or anything else. Translate other specific Mongolian cultural terms (e.g. clothing, food, objects, places) as precisely and concretely as you can, keeping well-known loanwords like "deel" untranslated if that is the accurate/standard English term.',
@@ -93,33 +95,31 @@ const CLAUDE_TRANSLATE_SYSTEM_PROMPT = [
 ].join(' ');
 
 /**
- * Translates `text` from Mongolian to English via Claude Haiku. Returns null
- * (never throws) if ANTHROPIC_API_KEY is missing, the request fails, times
- * out, or returns something unusable — callers should fall back to
- * myMemoryTranslate() in that case.
+ * Translates `text` from Mongolian to English via Gemini 3.5 Flash. Returns
+ * null (never throws) if GEMINI_API_KEY is missing, the request fails, times
+ * out, or returns something unusable (including a Gemini-side safety block)
+ * — callers should fall back to myMemoryTranslate() in that case.
  */
-async function claudeTranslateMongolianToEnglish(text: string): Promise<string | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+async function geminiTranslateMongolianToEnglish(text: string): Promise<string | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return null;
   }
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), CLAUDE_TRANSLATE_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), GEMINI_TRANSLATE_TIMEOUT_MS);
 
-    const res = await fetch(ANTHROPIC_API_URL, {
+    const res = await fetch(GEMINI_TRANSLATE_API_URL, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        'x-goog-api-key': apiKey,
       },
       body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: 300,
-        system: CLAUDE_TRANSLATE_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: text }],
+        systemInstruction: { parts: [{ text: GEMINI_TRANSLATE_SYSTEM_PROMPT }] },
+        contents: [{ role: 'user', parts: [{ text }] }],
+        generationConfig: { maxOutputTokens: 300 },
       }),
       signal: controller.signal,
     });
@@ -130,7 +130,11 @@ async function claudeTranslateMongolianToEnglish(text: string): Promise<string |
     }
 
     const data = await res.json();
-    const translated = data?.content?.[0]?.text;
+    if (data?.promptFeedback?.blockReason) {
+      return null;
+    }
+
+    const translated = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (typeof translated === 'string' && translated.trim().length > 0) {
       return translated.trim();
@@ -145,7 +149,7 @@ async function claudeTranslateMongolianToEnglish(text: string): Promise<string |
 /**
  * Translates `text` from Mongolian to English if it contains any Cyrillic
  * characters; otherwise returns it unchanged (already-English prompts skip
- * translation entirely). Tries Claude Haiku first (accurate on Mongolian
+ * translation entirely). Tries Gemini 3.5 Flash first (accurate on Mongolian
  * cultural/clothing terms — see module comment above), falls back to
  * MyMemory, and falls back to the original text if both fail. Never throws —
  * a translation hiccup never blocks a generation.
@@ -155,9 +159,9 @@ export async function translateMongolianToEnglish(text: string): Promise<string>
     return text;
   }
 
-  const claudeResult = await claudeTranslateMongolianToEnglish(text);
-  if (claudeResult) {
-    return claudeResult;
+  const geminiResult = await geminiTranslateMongolianToEnglish(text);
+  if (geminiResult) {
+    return geminiResult;
   }
 
   const translated = await myMemoryTranslate(text, 'mn|en');
@@ -167,11 +171,11 @@ export async function translateMongolianToEnglish(text: string): Promise<string>
 /**
  * Translates `text` from English to Mongolian. Used by the prompt enhancer
  * (src/libs/PromptEnhance.ts) to give the user a readable, editable
- * Mongolian preview of Claude's English-language enhanced description — see
+ * Mongolian preview of the enhancer's English-language description — see
  * that module for why the enhancement itself is generated in English rather
  * than Mongolian.
  *
- * Deliberately uses MyMemory only, NOT Claude Haiku, even though Claude is
+ * Deliberately uses MyMemory only, NOT Gemini, even though Gemini is
  * used for the MN->EN direction above. Tried routing this direction through
  * Claude Haiku too (2026-07-09) and reverted the same day: a real user
  * report showed it producing incoherent Mongolian word-salad for longer,

@@ -53,6 +53,16 @@ export const Env = createEnv({
     // still boots without it (calling Fal.ts functions without it throws a
     // clear error, same pattern as RUNPOD_API_KEY above).
     FAL_KEY: z.string().min(1).optional(),
+
+    // --- Google Gemini (prompt enhancement + MN->EN translation fallback) ---
+    // Replaced Claude Haiku (Anthropic) here 2026-07-16 — Gemini 3.5 Flash
+    // chosen over staying on Haiku despite being somewhat more expensive per
+    // call (see src/libs/PromptEnhance.ts's module comment). Get a key at
+    // https://aistudio.google.com/apikey and set it in Vercel's Environment
+    // Variables — optional here so `npm run dev` still boots without it
+    // (enhancePrompt()/translateMongolianToEnglish() degrade gracefully, same
+    // pattern as ANTHROPIC_API_KEY did before).
+    GEMINI_API_KEY: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().optional(),
@@ -78,6 +88,7 @@ export const Env = createEnv({
     QPAY_INVOICE_CODE: process.env.QPAY_INVOICE_CODE,
     ADMIN_EMAILS: process.env.ADMIN_EMAILS,
     FAL_KEY: process.env.FAL_KEY,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,

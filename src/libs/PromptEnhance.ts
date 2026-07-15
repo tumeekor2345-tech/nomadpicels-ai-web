@@ -1,37 +1,50 @@
 /**
  * AI-assisted prompt enhancement for users who type a short or vague idea for
  * their AI Image/Video generation (e.g. "морь унасан хүн" instead of a full,
- * detailed prompt). Calls Claude (Anthropic Messages API) to expand the
- * user's idea into a single, detailed prompt — written in ENGLISH.
+ * detailed prompt). Calls an LLM to expand the user's idea into a single,
+ * detailed prompt — written in ENGLISH.
  *
- * Why English and not Mongolian: an earlier version asked Claude to write
+ * Provider note (updated 2026-07-16): this ran on Claude Haiku (Anthropic
+ * Messages API) from when the feature was first built through 2026-07-16.
+ * Switched to Google Gemini 3.5 Flash at the user's explicit request, even
+ * though Gemini 3.5 Flash is somewhat MORE expensive per call than Haiku
+ * ($1.50/$9 vs $1/$5 per MTok — roughly $0.0024 vs $0.0015 per generation at
+ * this module's token budget) — cost was not the deciding factor here. The
+ * persona/rules in systemPromptFor() below (buzzword ban, cultural
+ * construction detail, per-engine word budgets) are unchanged and
+ * provider-agnostic; only the HTTP call in enhancePrompt() changed (Gemini's
+ * generateContent REST API instead of Anthropic's Messages API — different
+ * endpoint, auth header, and request/response JSON shape).
+ *
+ * Why English and not Mongolian: an earlier version asked the model to write
  * the enhanced description directly in Mongolian, since that's what the user
  * needs to read/edit. In practice Claude Haiku's free-form Mongolian writing
- * is unreliable — it produced incoherent, word-salad text often enough to be
- * a real problem (reported by a live user: nonsense phrases like "эвэртэй
- * туулай" showing up in otherwise unrelated descriptions). Haiku's English
- * writing is strong, and English is also what Flux/Wan actually consume. So
- * this module always produces English, and the route handler
- * (src/app/api/generate/enhance-prompt/route.ts) translates that English
- * text to Mongolian via src/libs/Translate.ts's translateEnglishToMongolian()
- * purely for display/editing — translation is a much more constrained task
- * than free creative writing and doesn't exhibit the same failure mode.
+ * was unreliable — it produced incoherent, word-salad text often enough to
+ * be a real problem (reported by a live user: nonsense phrases like
+ * "эвэртэй туулай" showing up in otherwise unrelated descriptions). English
+ * writing is strong on both providers, and English is also what Flux/Wan
+ * actually consume. So this module always produces English, and the route
+ * handler (src/app/api/generate/enhance-prompt/route.ts) translates that
+ * English text to Mongolian via src/libs/Translate.ts's
+ * translateEnglishToMongolian() purely for display/editing — translation is
+ * a much more constrained task than free creative writing and doesn't
+ * exhibit the same failure mode.
  *
- * This is always a user-initiated preview ("Санаагаа сайжруул" button in
- * GenerateForm): the user sees the Mongolian preview (editable) plus the
- * underlying English text, and explicitly approves it before it replaces
- * their prompt text — never applied silently, unlike src/libs/Translate.ts's
- * automatic translation at generation time.
+ * That route (and the Mongolian-preview UI it fed) is no longer used by the
+ * client — see src/libs/PromptPipeline.ts's module comment: as of 2026-07-16
+ * this enhancement runs fully automatically/invisibly on every generation,
+ * not via a user-approved preview step.
  *
- * Requires ANTHROPIC_API_KEY to be set (Vercel project env vars, or
- * .env.local for local dev). Get a key at https://console.anthropic.com.
+ * Requires GEMINI_API_KEY to be set (Vercel project env vars, or
+ * .env.local for local dev). Get a key at https://aistudio.google.com/apikey.
  * If the key is missing, enhancePrompt() returns { ok: false, reason:
  * 'not_configured' } rather than throwing, so the rest of the app keeps
- * working — the button just won't do anything useful until the key is added.
+ * working — src/libs/PromptPipeline.ts falls back to plain translation in
+ * that case.
  */
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+const GEMINI_MODEL = 'gemini-3.5-flash';
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const ENHANCE_TIMEOUT_MS = 15000;
 const REFUSAL_MARKER = 'REFUSED';
 
@@ -105,9 +118,53 @@ const REFUSAL_MARKER = 'REFUSED';
  * sleeves attached at the shoulder only, tight brief shorts, knee-high
  * leather boots) instead of relying on the loanword alone, and generalizes
  * that pattern to other cultural garments/objects too.
+ *
+ * Per-engine word budget added 2026-07-15 (later date stamp than the notes
+ * above, kept in original order): the ~60-80 word cap was tuned specifically
+ * around Flux SCHNELL's few-step distilled sampler — that's the engine the
+ * 2026-07-10 composition bug was diagnosed on, and it's genuinely starved by
+ * long/dense prompts. It was applied uniformly to every engine even though
+ * the app actually dispatches to several structurally different backends
+ * (see src/libs/RunPod.ts): Flux Dev (more sampling steps, tolerates more
+ * detail), Nano Banana 2 (Gemini-based — strong natural-language
+ * understanding, not a few-step diffusion sampler, and specifically the
+ * engine the zodog/shuudag cultural-accuracy bug was found on, so it
+ * benefits from MORE room to spell out construction detail, not less), Qwen
+ * Image and Wan T2I (diffusion-based like Flux, similar sensitivity).
+ * `enhancePrompt()` now takes a specific `EnhanceEngineId` instead of the
+ * old flux/wan `kind`, and `systemPromptFor()` picks a word budget per
+ * engine from ENGINE_PROFILES below instead of one fixed number. Rule 1
+ * (buzzword ban), rule 2 (concrete light/mood), rule 4 (cultural
+ * construction detail), and rule 5 (flowing prose) stay identical across all
+ * engines — only the length budget and the image/video framing note vary.
  */
-function systemPromptFor(kind: 'flux' | 'wan'): string {
-  const mediumNote = kind === 'wan'
+type EnhanceEngineId = 'flux_schnell' | 'flux_dev' | 'nanobanana2' | 'qwen_image' | 'wan_t2i' | 'wan_i2v';
+
+const ENGINE_PROFILES: Record<EnhanceEngineId, { sentences: string; words: string; isVideo: boolean }> = {
+  // Flux Schnell (RunPod public + dedicated-pod img2img): distilled few-step
+  // sampler, gets starved/confused by dense prompts — keep this the
+  // shortest, most concrete budget (unchanged from the original 2026-07-16 cap).
+  flux_schnell: { sentences: '2-3', words: '60-80', isVideo: false },
+  // Flux Dev: same family, more sampling steps — can absorb a bit more
+  // concrete detail without losing composition.
+  flux_dev: { sentences: '2-4', words: '80-110', isVideo: false },
+  // Nano Banana 2 (Gemini-based Edit endpoint): not a few-step diffusion
+  // sampler, has strong natural-language understanding, and is the engine
+  // the zodog/shuudag cultural-accuracy bug was diagnosed on — give it the
+  // most room specifically so rule 4's construction detail isn't squeezed out.
+  nanobanana2: { sentences: '3-5', words: '100-150', isVideo: false },
+  // Qwen Image (Alibaba, diffusion-based like Flux): keep concise.
+  qwen_image: { sentences: '2-3', words: '60-90', isVideo: false },
+  // Wan T2I (Alibaba, diffusion-based still-image mode): keep concise.
+  wan_t2i: { sentences: '2-3', words: '60-90', isVideo: false },
+  // Wan I2V (RunPod "wan-2-2-i2v-720"): same concise budget, but framed as
+  // video — see mediumNote below.
+  wan_i2v: { sentences: '2-3', words: '60-90', isVideo: true },
+};
+
+function systemPromptFor(engineId: EnhanceEngineId): string {
+  const profile = ENGINE_PROFILES[engineId];
+  const mediumNote = profile.isVideo
     ? 'This description is for a text-to-VIDEO model: weave in a simple, concrete description of what moves or happens in the scene as part of the same paragraph — not a separate tag.'
     : 'This description is for a text-to-IMAGE model: describe a single still moment, not action unfolding over time.';
 
@@ -119,27 +176,32 @@ function systemPromptFor(kind: 'flux' | 'wan'): string {
     'Follow these rules strictly:',
     '1. Never use generic technical quality buzzwords or camera-spec shorthand — banned examples include (but are not limited to) "8k", "photorealistic", "ultra photorealistic", "ultra detailed", "highly detailed", "cinematic lighting", "cinematic composition", "masterpiece", "award-winning photography", "documentary photography", "National Geographic style", "HDR", "high dynamic range", "sharp focus", "natural colors", "trending on artstation", or any similar stock phrase — these models respond poorly to keyword-stuffing like this; describe the scene concretely instead. This rule applies even if the input idea you were given already contains such tags (for example a trailing comma-separated fragment like "photorealistic, ultra detailed, realistic lighting" appended by a style preset) — treat those as noise to ignore, strip them out, and never extend or add more of them; expand only the actual subject/scene idea in concrete language.',
     '2. Instead of naming a lighting or mood keyword, describe concretely what the light and atmosphere actually look like and how they fall across the scene (for example, instead of "cinematic lighting" write something like "warm late-afternoon sunlight slants low across the field, casting long amber shadows") — but only if lighting is one of the few details you have room for; see the length limit below.',
-    '3. Keep the WHOLE result to about 2-3 sentences, roughly 60-80 words total — this is a concise, punchy prompt, not an exhaustive scene description. Pick only the 2-4 most important details for this particular idea (e.g. subject + pose/expression + setting + one telling detail of light or clothing) from the fuller list of subject, appearance, pose, expression, clothing, environment, lighting, camera angle, lens, composition, color palette, atmosphere, and materials — do not try to touch all of them. Stay faithful to what the user actually asked for; add sensible, concrete detail without inventing details that contradict or wildly diverge from their idea.',
-    '4. Always preserve authentic culture — but a loanword alone is not enough, because the IMAGE model rendering your description often does not know what a culture-specific garment actually looks like (only you, writing the description, do). Spell out the real visual construction — cut, coverage, silhouette, material — instead of just naming it. For Mongolian wrestling (Bökh) at Naadam specifically: describe an open-fronted zodog — a small, tight vest with long sleeves attached only at the shoulders that leaves the chest and belly bare — paired with tight brief-style shuudag shorts and knee-high leather gutul boots; never a full-coverage shirt, jacket, or generic deel robe. Apply the same principle to any other culture\'s clothing or objects: describe what it actually looks like, never a Western or generic substitute.',
+    `3. Keep the WHOLE result to about ${profile.sentences} sentences, roughly ${profile.words} words total — this is a concise, punchy prompt, not an exhaustive scene description. Pick only the most important details for this particular idea (e.g. subject + pose/expression + setting + one telling detail of light or clothing) from the fuller list of subject, appearance, pose, expression, clothing, environment, lighting, camera angle, lens, composition, color palette, atmosphere, and materials — do not try to touch all of them. Stay faithful to what the user actually asked for; add sensible, concrete detail without inventing details that contradict or wildly diverge from their idea.`,
+    '4. Always preserve authentic culture — but a loanword alone is not enough, because the IMAGE model rendering your description often does not know what a culture-specific garment actually looks like (only you, writing the description, do). Spell out the real visual construction — cut, coverage, silhouette, material — instead of just naming it, even if that means spending most of your sentence/word budget on it. For Mongolian wrestling (Bökh) at Naadam specifically: describe an open-fronted zodog — a small, tight vest with long sleeves attached only at the shoulders that leaves the chest and belly bare — paired with tight brief-style shuudag shorts and knee-high leather gutul boots; never a full-coverage shirt, jacket, or generic deel robe. Apply the same principle to any other culture\'s clothing or objects: describe what it actually looks like, never a Western or generic substitute.',
     '5. Write the entire result as flowing prose sentences — never sections, numbering, markdown, or a comma-separated list of fragments.',
     mediumNote,
     'Do not write biographies, do not explain history, do not describe invisible internal emotions, and do not repeat the same information twice.',
     `If the request describes sexual content involving minors, non-consensual sexual content, or other clearly disallowed content, respond with exactly the single word ${REFUSAL_MARKER} and nothing else.`,
-    'Respond with ONLY the finished English prompt (2-3 sentences, ~60-80 words) — no preamble, no greeting, no labels, no quotation marks, no explanation.',
+    `Respond with ONLY the finished English prompt (${profile.sentences} sentences, ~${profile.words} words) — no preamble, no greeting, no labels, no quotation marks, no explanation.`,
   ].join(' ');
 }
+
+export type { EnhanceEngineId };
 
 export type EnhanceResult
   = | { ok: true; enhancedPrompt: string }
     | { ok: false; reason: 'blocked' | 'not_configured' | 'failed' };
 
 /**
- * Expands `rawPrompt` into a detailed English description via Claude Haiku.
- * Never throws — any failure (missing key, timeout, network error,
- * malformed response) is reported as a typed failure reason instead.
+ * Expands `rawPrompt` into a detailed English description via Gemini 3.5
+ * Flash, tailored to the specific downstream image/video engine (see
+ * `EnhanceEngineId` / `ENGINE_PROFILES` above for why the word budget
+ * differs per engine). Never throws — any failure (missing key, timeout,
+ * network error, malformed response, or Gemini's own safety block) is
+ * reported as a typed failure reason instead.
  */
-export async function enhancePrompt(rawPrompt: string, kind: 'flux' | 'wan'): Promise<EnhanceResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+export async function enhancePrompt(rawPrompt: string, engineId: EnhanceEngineId): Promise<EnhanceResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return { ok: false, reason: 'not_configured' };
   }
@@ -148,26 +210,29 @@ export async function enhancePrompt(rawPrompt: string, kind: 'flux' | 'wan'): Pr
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), ENHANCE_TIMEOUT_MS);
 
-    const res = await fetch(ANTHROPIC_API_URL, {
+    const res = await fetch(GEMINI_API_URL, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        // Gemini's REST API accepts the key either as a query param
+        // (?key=...) or this header — the header keeps it out of logs/URLs.
+        'x-goog-api-key': apiKey,
       },
       body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        // ~60-80 words (see systemPromptFor's rule 3) is roughly 110-130
-        // tokens — 200 gives headroom above that while still acting as a
-        // hard backstop against the model ignoring the length instruction.
-        // Was 500 before the 2026-07-16 length cap.
-        max_tokens: 200,
-        // Lower than Anthropic's default (~1.0) so rule-following (the
-        // buzzword ban especially) is more literal and consistent — added
-        // 2026-07-16 alongside the strengthened rule 1, see module comment.
-        temperature: 0.3,
-        system: systemPromptFor(kind),
-        messages: [{ role: 'user', content: rawPrompt }],
+        systemInstruction: { parts: [{ text: systemPromptFor(engineId) }] },
+        contents: [{ role: 'user', parts: [{ text: rawPrompt }] }],
+        generationConfig: {
+          // Lower than Gemini's default so rule-following (the buzzword ban
+          // especially) is more literal and consistent — carried over from
+          // the same reasoning applied to the Claude Haiku call this
+          // replaced 2026-07-16, see module comment.
+          temperature: 0.3,
+          // The widest per-engine budget is nanobanana2's ~150 words (see
+          // ENGINE_PROFILES above), roughly 200-220 tokens — 320 gives
+          // headroom above that across every engine while still acting as a
+          // hard backstop against the model ignoring the length instruction.
+          maxOutputTokens: 320,
+        },
       }),
       signal: controller.signal,
     });
@@ -178,10 +243,23 @@ export async function enhancePrompt(rawPrompt: string, kind: 'flux' | 'wan'): Pr
     }
 
     const data = await res.json();
-    const text = data?.content?.[0]?.text;
+
+    // Gemini can block at the PROMPT level (promptFeedback.blockReason, no
+    // candidates at all) or at the RESPONSE level (a candidate exists but
+    // finishReason is SAFETY/RECITATION/etc. instead of STOP, sometimes with
+    // no text parts). Treat both as a moderation block rather than a generic
+    // failure, same as REFUSAL_MARKER below for the model's own refusal.
+    if (data?.promptFeedback?.blockReason) {
+      return { ok: false, reason: 'blocked' };
+    }
+
+    const candidate = data?.candidates?.[0];
+    const text = candidate?.content?.parts?.[0]?.text;
 
     if (typeof text !== 'string' || text.trim().length === 0) {
-      return { ok: false, reason: 'failed' };
+      return candidate?.finishReason && candidate.finishReason !== 'STOP' && candidate.finishReason !== 'MAX_TOKENS'
+        ? { ok: false, reason: 'blocked' }
+        : { ok: false, reason: 'failed' };
     }
 
     const trimmed = text.trim();

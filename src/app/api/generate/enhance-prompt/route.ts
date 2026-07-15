@@ -1,3 +1,4 @@
+import type { EnhanceEngineId } from '@/libs/PromptEnhance';
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { isPromptBlocked } from '@/libs/ContentModeration';
@@ -5,15 +6,15 @@ import { enhancePrompt } from '@/libs/PromptEnhance';
 import { translateEnglishToMongolian } from '@/libs/Translate';
 
 /**
- * User-initiated "Санаагаа сайжруул" (Improve my idea) preview — expands a
- * short/vague prompt into a detailed ENGLISH description via Claude Haiku
- * (see src/libs/PromptEnhance.ts for why English, not Mongolian, is
- * generated). That English text is translated to Mongolian (see
- * src/libs/Translate.ts) purely so the user has something readable to
- * review and edit. The client shows both — the Mongolian text is editable,
- * the English text is read-only — and only uses the (possibly edited)
- * Mongolian text if the user explicitly approves it. Nothing here submits a
- * generation job.
+ * Formerly the user-initiated "Санаагаа сайжруул" (Improve my idea) preview.
+ * That button/preview flow was removed from GenerateForm.tsx on 2026-07-16
+ * (see src/libs/PromptPipeline.ts's module comment) in favor of a fully
+ * automatic, invisible enhancement stage inside POST /api/generate — this
+ * route is currently UNUSED by the client but kept working (not deleted) in
+ * case a manual preview is wanted again later. No fluxEngine/reference-image
+ * context is available here, so it can only guess a representative engine
+ * per kind rather than the exact one a real generation would resolve to —
+ * see src/app/api/generate/preview-prompt/route.ts for the same caveat.
  */
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'prompt is required.' }, { status: 400 });
   }
 
-  const kind = body.kind === 'wan' ? 'wan' : 'flux';
+  const engineId: EnhanceEngineId = body.kind === 'wan' ? 'wan_i2v' : 'flux_schnell';
 
   if (isPromptBlocked(body.prompt)) {
     return NextResponse.json(
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await enhancePrompt(body.prompt, kind);
+  const result = await enhancePrompt(body.prompt, engineId);
 
   if (!result.ok) {
     if (result.reason === 'blocked') {

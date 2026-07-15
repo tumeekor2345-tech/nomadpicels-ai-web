@@ -5,6 +5,7 @@ import { auth } from '@clerk/nextjs/server';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import type { FluxEngineId } from '@/libs/Pricing';
+import type { EnhanceEngineId } from '@/libs/PromptEnhance';
 import { isAdminUser } from '@/libs/Admin';
 import { isPromptBlocked } from '@/libs/ContentModeration';
 import { db } from '@/libs/DB';
@@ -173,22 +174,68 @@ export async function POST(request: Request) {
     );
   }
 
-  // 4-stage prompt pipeline (see src/libs/PromptPipeline.ts for the full
-  // breakdown: auto-enhance -> reinforce composition -> preview/edit -> send
-  // to RunPod). Stage 1 now runs Claude Haiku automatically on every
-  // generation (no manual "Санаагаа сайжруул" step anymore, per the user's
-  // 2026-07-16 request). Stage 3 is still client-side: GenerateForm.tsx
-  // calls POST /api/generate/preview-prompt to show the user the exact text
-  // stages 1-2 would produce, and if the user edits that box, the edited
-  // text comes back here as `finalPromptOverride` and is used AS-IS — stages
-  // 1-2 are skipped entirely for that generation.
+  // The AI Image (Flux) generator's "add reference" feature reuses the same
+  // img2img workflow as Photo Restore — composition/subject-guided
+  // generation, not face-consistency (that would need IP-Adapter, which the
+  // current RunPod worker doesn't bundle).
+  //
+  // These are resolved up here (moved 2026-07-15, previously computed after
+  // the prompt pipeline ran) because the prompt-enhance stage below now needs
+  // to know the ACTUAL engine a generation will run on — see EnhanceEngineId
+  // in src/libs/PromptEnhance.ts — not just the broad flux/wan kind.
+  const usingFluxReference = body.kind === 'flux'
+    && typeof body.referenceImageBase64 === 'string'
+    && body.referenceImageBase64.length > 0;
+
+  const fluxEngine: FluxEngineId = body.kind === 'flux' && VALID_FLUX_ENGINES.includes(body.engine)
+    ? body.engine
+    : 'runpod';
+  const usingRunPodFlux = body.kind === 'flux' && fluxEngine === 'runpod';
+
+  // Only meaningful for an actual Nano Banana 2 Edit call (Top-tier engine +
+  // reference image) — the no-reference fallback to Flux Dev always renders
+  // at its own fixed size, so `resolution` is ignored there. Falls back to
+  // '1k' for anything invalid/missing, same rate as before this feature
+  // existed (see NANOBANANA2_RESOLUTION_CREDIT_COST in src/libs/Pricing.ts).
+  const usingNanoBanana2 = fluxEngine === 'fal_nanobanana2' && usingFluxReference;
+  const nanoBanana2Resolution: NanoBanana2Resolution = usingNanoBanana2 && VALID_NANOBANANA2_RESOLUTIONS.includes(body.resolution)
+    ? body.resolution
+    : '1k';
+
+  // Maps the resolved engine selection onto the specific id
+  // src/libs/PromptEnhance.ts tailors its word budget/rules for (see
+  // ENGINE_PROFILES there) — mirrors exactly which backend the dispatch
+  // switch below actually calls for each combination, including the Nano
+  // Banana 2 -> Flux Dev fallback when no reference image is attached.
+  const enhanceEngineId: EnhanceEngineId = body.kind === 'wan'
+    ? 'wan_i2v'
+    : fluxEngine === 'runpod'
+      ? 'flux_schnell'
+      : fluxEngine === 'fal_nanobanana2'
+        ? (usingNanoBanana2 ? 'nanobanana2' : 'flux_dev')
+        : fluxEngine === 'fal_flux_dev'
+          ? 'flux_dev'
+          : fluxEngine === 'qwen_image'
+            ? 'qwen_image'
+            : 'wan_t2i';
+
+  // 3-stage prompt pipeline (see src/libs/PromptPipeline.ts for the full
+  // breakdown: auto-enhance -> reinforce composition -> send to RunPod).
+  // Stage 1 runs Gemini 3.5 Flash automatically on every generation (no manual
+  // "Санаагаа сайжруул" step, per the user's 2026-07-16 request), tailored to
+  // the specific `enhanceEngineId` resolved above (per the user's 2026-07-15
+  // request to differentiate prompt style per engine rather than just
+  // flux/wan). `finalPromptOverride` is legacy: GenerateForm.tsx no longer
+  // sends it (the "Эцсийн Prompt" preview box was removed), but the override
+  // path is kept working in case anything still sends it — used AS-IS,
+  // skipping stage 1-2 entirely for that generation.
   const hasOverride = needsUserPrompt
     && typeof body.finalPromptOverride === 'string'
     && body.finalPromptOverride.trim().length > 0;
 
   let modelPrompt: string = body.prompt;
   if (needsUserPrompt && !hasOverride) {
-    const pipelineResult = await buildFinalModelPrompt(body.prompt, body.kind as 'flux' | 'wan');
+    const pipelineResult = await buildFinalModelPrompt(body.prompt, enhanceEngineId);
     if (!pipelineResult.ok) {
       return NextResponse.json(
         { error: 'prompt_blocked', message: 'This prompt violates our content policy.' },
@@ -227,29 +274,6 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-
-  // The AI Image (Flux) generator's "add reference" feature reuses the same
-  // img2img workflow as Photo Restore — composition/subject-guided
-  // generation, not face-consistency (that would need IP-Adapter, which the
-  // current RunPod worker doesn't bundle).
-  const usingFluxReference = body.kind === 'flux'
-    && typeof body.referenceImageBase64 === 'string'
-    && body.referenceImageBase64.length > 0;
-
-  const fluxEngine: FluxEngineId = body.kind === 'flux' && VALID_FLUX_ENGINES.includes(body.engine)
-    ? body.engine
-    : 'runpod';
-  const usingRunPodFlux = body.kind === 'flux' && fluxEngine === 'runpod';
-
-  // Only meaningful for an actual Nano Banana 2 Edit call (Top-tier engine +
-  // reference image) — the no-reference fallback to Flux Dev always renders
-  // at its own fixed size, so `resolution` is ignored there. Falls back to
-  // '1k' for anything invalid/missing, same rate as before this feature
-  // existed (see NANOBANANA2_RESOLUTION_CREDIT_COST in src/libs/Pricing.ts).
-  const usingNanoBanana2 = fluxEngine === 'fal_nanobanana2' && usingFluxReference;
-  const nanoBanana2Resolution: NanoBanana2Resolution = usingNanoBanana2 && VALID_NANOBANANA2_RESOLUTIONS.includes(body.resolution)
-    ? body.resolution
-    : '1k';
 
   // RunPod Public Endpoint engines (fal_flux_dev / fal_nanobanana2, and as of
   // 2026-07-15 also the plain 'runpod' Standard engine — see
