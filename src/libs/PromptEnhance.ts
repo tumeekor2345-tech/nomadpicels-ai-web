@@ -91,6 +91,20 @@ const REFUSAL_MARKER = 'REFUSED';
  * the input rather than extend them. Also added `temperature: 0.3` to the
  * API call below (previously unset, i.e. Anthropic's default ~1.0) to make
  * rule-following more literal and consistent run to run.
+ *
+ * Rule 4 (cultural accuracy) strengthened same day after a side-by-side live
+ * comparison: same idea ("Mongolian wrestlers"), same engine (Nano Banana
+ * 2), our site vs imagine.art — imagine.art correctly rendered an
+ * open-chested zodog vest + shuudag briefs, ours rendered a full-coverage
+ * red/blue outfit that isn't real zodog/shuudag at all. Just naming "zodog/
+ * shuudag" wasn't enough — the IMAGE model (not Claude) doesn't reliably
+ * know what those words look like, the same failure class as the earlier
+ * "дээл" MyMemory mistranslation bug (see src/libs/Translate.ts), just at
+ * the image-generation stage instead of translation. Fix: rule 4 now spells
+ * out the actual visual construction (open front, bare chest/belly, long
+ * sleeves attached at the shoulder only, tight brief shorts, knee-high
+ * leather boots) instead of relying on the loanword alone, and generalizes
+ * that pattern to other cultural garments/objects too.
  */
 function systemPromptFor(kind: 'flux' | 'wan'): string {
   const mediumNote = kind === 'wan'
@@ -106,7 +120,7 @@ function systemPromptFor(kind: 'flux' | 'wan'): string {
     '1. Never use generic technical quality buzzwords or camera-spec shorthand — banned examples include (but are not limited to) "8k", "photorealistic", "ultra photorealistic", "ultra detailed", "highly detailed", "cinematic lighting", "cinematic composition", "masterpiece", "award-winning photography", "documentary photography", "National Geographic style", "HDR", "high dynamic range", "sharp focus", "natural colors", "trending on artstation", or any similar stock phrase — these models respond poorly to keyword-stuffing like this; describe the scene concretely instead. This rule applies even if the input idea you were given already contains such tags (for example a trailing comma-separated fragment like "photorealistic, ultra detailed, realistic lighting" appended by a style preset) — treat those as noise to ignore, strip them out, and never extend or add more of them; expand only the actual subject/scene idea in concrete language.',
     '2. Instead of naming a lighting or mood keyword, describe concretely what the light and atmosphere actually look like and how they fall across the scene (for example, instead of "cinematic lighting" write something like "warm late-afternoon sunlight slants low across the field, casting long amber shadows") — but only if lighting is one of the few details you have room for; see the length limit below.',
     '3. Keep the WHOLE result to about 2-3 sentences, roughly 60-80 words total — this is a concise, punchy prompt, not an exhaustive scene description. Pick only the 2-4 most important details for this particular idea (e.g. subject + pose/expression + setting + one telling detail of light or clothing) from the fuller list of subject, appearance, pose, expression, clothing, environment, lighting, camera angle, lens, composition, color palette, atmosphere, and materials — do not try to touch all of them. Stay faithful to what the user actually asked for; add sensible, concrete detail without inventing details that contradict or wildly diverge from their idea.',
-    '4. Always preserve authentic culture — never replace traditional clothing with generic or Western equivalents, and never westernize a cultural scene. For example: Mongolian wrestling should be described with real zodog/shuudag wrestling attire and Naadam Festival context, not a generic deel; a samurai should wear authentic period armor, not fantasy armor.',
+    '4. Always preserve authentic culture — but a loanword alone is not enough, because the IMAGE model rendering your description often does not know what a culture-specific garment actually looks like (only you, writing the description, do). Spell out the real visual construction — cut, coverage, silhouette, material — instead of just naming it. For Mongolian wrestling (Bökh) at Naadam specifically: describe an open-fronted zodog — a small, tight vest with long sleeves attached only at the shoulders that leaves the chest and belly bare — paired with tight brief-style shuudag shorts and knee-high leather gutul boots; never a full-coverage shirt, jacket, or generic deel robe. Apply the same principle to any other culture\'s clothing or objects: describe what it actually looks like, never a Western or generic substitute.',
     '5. Write the entire result as flowing prose sentences — never sections, numbering, markdown, or a comma-separated list of fragments.',
     mediumNote,
     'Do not write biographies, do not explain history, do not describe invisible internal emotions, and do not repeat the same information twice.',
