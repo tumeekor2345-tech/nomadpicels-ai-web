@@ -71,6 +71,26 @@ const REFUSAL_MARKER = 'REFUSED';
  * picked "Дунд — 2-3 өгүүлбэр (~60-80 үг)" from the given options — so rule
  * 3 below now explicitly caps length and says to touch only the categories
  * that matter for this particular idea, not exhaustively hit every one.
+ *
+ * Buzzword rule strengthened same day after a live test (AI Image, style =
+ * Photorealistic, prompt "монгол гэр") showed Claude ADDING buzzwords rather
+ * than avoiding them — output included "cinematic composition, ultra
+ * photorealistic, documentary photography, National Geographic style, 85mm
+ * lens, shallow depth of field, HDR, natural colors, masterpiece,
+ * award-winning photography, 8k, ultra detailed, realistic lighting, sharp
+ * focus, high dynamic range" despite rule 1 already banning this. Root
+ * cause: the client (GenerateForm.tsx's buildFinalPrompt()) appends the
+ * selected Style/Lens preset's own short tag fragment (e.g. "photorealistic,
+ * ultra detailed, realistic lighting" — see src/libs/ImagePresets.ts's
+ * STYLE_PRESETS) onto the user's idea BEFORE it ever reaches this module, so
+ * Claude was handed buzzwords as if they were part of the "user's" request
+ * and, under the old rule 3 ("stay faithful to what the user asked for"),
+ * treated them as something to honor and build on instead of strip. Rule 1
+ * now explicitly lists the exact phrases that leaked through as banned
+ * examples and tells Claude to strip/ignore any such tags already present in
+ * the input rather than extend them. Also added `temperature: 0.3` to the
+ * API call below (previously unset, i.e. Anthropic's default ~1.0) to make
+ * rule-following more literal and consistent run to run.
  */
 function systemPromptFor(kind: 'flux' | 'wan'): string {
   const mediumNote = kind === 'wan'
@@ -83,7 +103,7 @@ function systemPromptFor(kind: 'flux' | 'wan'): string {
     'Never write a story or biography, never explain your reasoning, and only describe what should visibly appear in the image.',
     'If the user writes in Mongolian, think in Mongolian first, then produce the result ONLY in English — never output Mongolian.',
     'Follow these rules strictly:',
-    '1. Never use generic technical quality buzzwords or camera-spec shorthand such as "8k", "photorealistic", "ultra detailed", "cinematic lighting", "highly detailed", "masterpiece", "trending on artstation", or similar stock phrases — these models respond poorly to keyword-stuffing like this; describe the scene concretely instead.',
+    '1. Never use generic technical quality buzzwords or camera-spec shorthand — banned examples include (but are not limited to) "8k", "photorealistic", "ultra photorealistic", "ultra detailed", "highly detailed", "cinematic lighting", "cinematic composition", "masterpiece", "award-winning photography", "documentary photography", "National Geographic style", "HDR", "high dynamic range", "sharp focus", "natural colors", "trending on artstation", or any similar stock phrase — these models respond poorly to keyword-stuffing like this; describe the scene concretely instead. This rule applies even if the input idea you were given already contains such tags (for example a trailing comma-separated fragment like "photorealistic, ultra detailed, realistic lighting" appended by a style preset) — treat those as noise to ignore, strip them out, and never extend or add more of them; expand only the actual subject/scene idea in concrete language.',
     '2. Instead of naming a lighting or mood keyword, describe concretely what the light and atmosphere actually look like and how they fall across the scene (for example, instead of "cinematic lighting" write something like "warm late-afternoon sunlight slants low across the field, casting long amber shadows") — but only if lighting is one of the few details you have room for; see the length limit below.',
     '3. Keep the WHOLE result to about 2-3 sentences, roughly 60-80 words total — this is a concise, punchy prompt, not an exhaustive scene description. Pick only the 2-4 most important details for this particular idea (e.g. subject + pose/expression + setting + one telling detail of light or clothing) from the fuller list of subject, appearance, pose, expression, clothing, environment, lighting, camera angle, lens, composition, color palette, atmosphere, and materials — do not try to touch all of them. Stay faithful to what the user actually asked for; add sensible, concrete detail without inventing details that contradict or wildly diverge from their idea.',
     '4. Always preserve authentic culture — never replace traditional clothing with generic or Western equivalents, and never westernize a cultural scene. For example: Mongolian wrestling should be described with real zodog/shuudag wrestling attire and Naadam Festival context, not a generic deel; a samurai should wear authentic period armor, not fantasy armor.',
@@ -128,6 +148,10 @@ export async function enhancePrompt(rawPrompt: string, kind: 'flux' | 'wan'): Pr
         // hard backstop against the model ignoring the length instruction.
         // Was 500 before the 2026-07-16 length cap.
         max_tokens: 200,
+        // Lower than Anthropic's default (~1.0) so rule-following (the
+        // buzzword ban especially) is more literal and consistent — added
+        // 2026-07-16 alongside the strengthened rule 1, see module comment.
+        temperature: 0.3,
         system: systemPromptFor(kind),
         messages: [{ role: 'user', content: rawPrompt }],
       }),
