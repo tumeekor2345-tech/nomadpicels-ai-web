@@ -119,7 +119,16 @@ async function geminiTranslateMongolianToEnglish(text: string): Promise<string |
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: GEMINI_TRANSLATE_SYSTEM_PROMPT }] },
         contents: [{ role: 'user', parts: [{ text }] }],
-        generationConfig: { maxOutputTokens: 300 },
+        // thinkingConfig + raised maxOutputTokens added 2026-07-16 — same
+        // fix, same reason as src/libs/PromptEnhance.ts's enhancePrompt():
+        // gemini-3.5-flash thinks by default and thinking tokens are drawn
+        // from maxOutputTokens, so a low budget with no thinkingConfig risks
+        // the exact same silent mid-translation truncation. Translation
+        // needs no multi-step reasoning, so thinking is minimized.
+        generationConfig: {
+          thinkingConfig: { thinkingLevel: 'minimal' },
+          maxOutputTokens: 1024,
+        },
       }),
       signal: controller.signal,
     });

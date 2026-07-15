@@ -155,6 +155,21 @@ const REFUSAL_MARKER = 'REFUSED';
  * default to describing the wider festive scene: crowd, banners/flag,
  * stadium or steppe, nearby ger camp) so a generic Naadam prompt isn't
  * silently narrowed to two figures with no context.
+ *
+ * thinkingConfig fix added 2026-07-16 (same day, later): after the Naadam
+ * rule-4 fix above, a live test still produced wildly inconsistent/unrelated
+ * images across repeated identical "Монгол наадам" generations. Root cause,
+ * confirmed via Vercel logs + Gemini docs: gemini-3.5-flash "thinks"
+ * internally by default (thinkingLevel "medium"), and thinking tokens are
+ * drawn from the SAME maxOutputTokens budget as the visible answer. With
+ * maxOutputTokens at 320 and no thinkingConfig, internal reasoning silently
+ * consumed nearly the whole budget, hard-truncating the actual answer
+ * mid-sentence (logged output: "Under a vast blue sky on the sweeping green
+ * Mongolian steppe, a" — cut off before any subject was named). Downstream
+ * image engines then had to hallucinate the missing subject each time,
+ * producing different unrelated results per generation. Fixed in
+ * enhancePrompt() below by setting thinkingConfig.thinkingLevel to 'minimal'
+ * and raising maxOutputTokens to 1024 as headroom.
  */
 type EnhanceEngineId = 'flux_schnell' | 'flux_dev' | 'nanobanana2' | 'qwen_image' | 'wan_t2i' | 'wan_i2v';
 
@@ -245,11 +260,25 @@ export async function enhancePrompt(rawPrompt: string, engineId: EnhanceEngineId
           // the same reasoning applied to the Claude Haiku call this
           // replaced 2026-07-16, see module comment.
           temperature: 0.3,
-          // The widest per-engine budget is nanobanana2's ~150 words (see
-          // ENGINE_PROFILES above), roughly 200-220 tokens — 320 gives
-          // headroom above that across every engine while still acting as a
-          // hard backstop against the model ignoring the length instruction.
-          maxOutputTokens: 320,
+          // thinkingConfig added 2026-07-16 (same day, found via live
+          // "монгол наадам" debugging): Gemini 3.x models think by default
+          // (thinkingLevel "medium" for gemini-3.5-flash) and thinking tokens
+          // are drawn from the SAME maxOutputTokens budget as the visible
+          // answer. With maxOutputTokens at 320 and no thinkingConfig, nearly
+          // the entire budget was silently consumed by internal reasoning,
+          // hard-truncating the actual answer mid-sentence (confirmed via
+          // Vercel logs: output cut off at "...a" with no subject named).
+          // This task — expanding a short idea into a prompt — needs no
+          // multi-step reasoning, so thinking is set to 'minimal' (Gemini
+          // doesn't allow fully disabling thinking on 3.5 Flash the way
+          // thinkingBudget=0 did on 2.5 Flash).
+          thinkingConfig: { thinkingLevel: 'minimal' },
+          // Raised from 320 as extra headroom now that thinking is minimized
+          // — the widest per-engine budget is nanobanana2's ~150 words
+          // (~200-220 tokens); 1024 gives a large safety margin even if
+          // 'minimal' still reasons a bit on a harder prompt (per Gemini's
+          // docs, minimal does not guarantee thinking is fully off).
+          maxOutputTokens: 1024,
         },
       }),
       signal: controller.signal,
