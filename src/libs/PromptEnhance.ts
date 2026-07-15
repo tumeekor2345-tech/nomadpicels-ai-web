@@ -193,8 +193,16 @@ const REFUSAL_MARKER = 'REFUSED';
  * output was added — the module comment above already explains why that
  * belongs in the RunPod/Fal input builders, not here, and that reasoning is
  * unchanged.
+ *
+ * 'nanobanana2' removed 2026-07-15 (later, after the above) along with the
+ * "AI Image" tool's Nano Banana 2 engine option itself — see
+ * src/libs/Pricing.ts's FluxEngineId comment. It's now unreachable: the only
+ * caller was route.ts's `usingNanoBanana2` branch, which no longer exists.
+ * Face Swap's swap mode still calls the same underlying RunPod endpoint
+ * directly (buildNanoBanana2FaceSwapInput() in src/libs/RunPod.ts) but with
+ * a fixed server-side prompt, never through enhancePrompt().
  */
-type EnhanceEngineId = 'flux_schnell' | 'flux_dev' | 'nanobanana2' | 'qwen_image' | 'wan_t2i' | 'wan_i2v';
+type EnhanceEngineId = 'flux_schnell' | 'flux_dev' | 'qwen_image' | 'wan_t2i' | 'wan_i2v';
 
 const ENGINE_PROFILES: Record<EnhanceEngineId, { sentences: string; words: string; isVideo: boolean }> = {
   // Flux Schnell (RunPod public + dedicated-pod img2img): distilled few-step
@@ -204,11 +212,6 @@ const ENGINE_PROFILES: Record<EnhanceEngineId, { sentences: string; words: strin
   // Flux Dev: same family, more sampling steps — can absorb a bit more
   // concrete detail without losing composition.
   flux_dev: { sentences: '2-4', words: '80-110', isVideo: false },
-  // Nano Banana 2 (Gemini-based Edit endpoint): not a few-step diffusion
-  // sampler, has strong natural-language understanding, and is the engine
-  // the zodog/shuudag cultural-accuracy bug was diagnosed on — give it the
-  // most room specifically so rule 4's construction detail isn't squeezed out.
-  nanobanana2: { sentences: '3-5', words: '100-150', isVideo: false },
   // Qwen Image (Alibaba, diffusion-based like Flux): keep concise.
   qwen_image: { sentences: '2-3', words: '60-90', isVideo: false },
   // Wan T2I (Alibaba, diffusion-based still-image mode): keep concise.
@@ -225,7 +228,7 @@ function systemPromptFor(engineId: EnhanceEngineId): string {
     : 'This description is for a text-to-IMAGE model: describe a single still moment, not action unfolding over time.';
 
   return [
-    'You are Bold, the world\'s best AI Image Prompt Engineer, working for a Mongolian AI image/video generation platform that uses Nano Banana 2, Flux, Qwen Image, and Wan.',
+    'You are Bold, the world\'s best AI Image Prompt Engineer, working for a Mongolian AI image/video generation platform that uses Flux, Qwen Image, and Wan.',
     'Your job is NOT to translate literally. Users type short, vague ideas — often just one or two words, in Mongolian or English. Infer the most likely visual scene and expand it into a concise, vivid description written as natural, fluent English prose — the way a person would describe a photograph aloud in a couple of sentences, not a list of tags or keywords. Avoid randomness — every word you choose should improve the image, never pad the sentence.',
     'Never write a story or biography, never explain your reasoning, and only describe what should visibly appear in the image.',
     'If the user writes in Mongolian, think in Mongolian first, then produce the result ONLY in English — never output Mongolian.',
@@ -300,8 +303,8 @@ export async function enhancePrompt(rawPrompt: string, engineId: EnhanceEngineId
           // thinkingBudget=0 did on 2.5 Flash).
           thinkingConfig: { thinkingLevel: 'minimal' },
           // Raised from 320 as extra headroom now that thinking is minimized
-          // — the widest per-engine budget is nanobanana2's ~150 words
-          // (~200-220 tokens); 1024 gives a large safety margin even if
+          // — the widest per-engine budget is flux_dev's ~110 words
+          // (~150 tokens); 1024 gives a large safety margin even if
           // 'minimal' still reasons a bit on a harder prompt (per Gemini's
           // docs, minimal does not guarantee thinking is fully off).
           maxOutputTokens: 1024,

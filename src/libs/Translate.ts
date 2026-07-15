@@ -35,7 +35,7 @@
 // eslint-disable-next-line regexp/no-obscure-range -- explicit Cyrillic code-point range, not obscure in context
 const CYRILLIC_PATTERN = /[Ѐ-ӿ]/;
 
-function containsCyrillic(text: string): boolean {
+export function containsCyrillic(text: string): boolean {
   return CYRILLIC_PATTERN.test(text);
 }
 

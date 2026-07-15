@@ -1,4 +1,4 @@
-import type { FluxEngineId, NanoBanana2Resolution } from '@/libs/Pricing';
+import type { FluxEngineId } from '@/libs/Pricing';
 
 import type { EnhanceEngineId } from '@/libs/PromptEnhance';
 import type { ComfyUIWorkflow } from '@/libs/RunPod';
@@ -19,7 +19,7 @@ import {
   EFFECT_PRESETS,
   STYLE_PRESETS,
 } from '@/libs/ImagePresets';
-import { CREDIT_COST, FACE_SWAP_PRO_CREDIT_COST, FLUX_ENGINE_CREDIT_COST, NANOBANANA2_RESOLUTION_CREDIT_COST, wanCreditCost } from '@/libs/Pricing';
+import { CREDIT_COST, FACE_SWAP_PRO_CREDIT_COST, FLUX_ENGINE_CREDIT_COST, wanCreditCost } from '@/libs/Pricing';
 import { buildFinalModelPrompt } from '@/libs/PromptPipeline';
 import {
   buildFaceSwapInput,
@@ -28,7 +28,6 @@ import {
   buildQwenImageInput,
   buildRunPodFluxDevInput,
   buildRunPodFluxSchnellInput,
-  buildRunPodNanoBanana2EditInput,
   buildWanInput,
   buildWanT2IInput,
   submitRunPodJob,
@@ -41,18 +40,14 @@ import { creditBalanceSchema, generationSchema } from '@/models/Schema';
 // (FLUX_ENGINE_CREDIT_COST) and src/libs/RunPod.ts's "RunPod Hub Public
 // Endpoints" section. Defaults to 'runpod' (the original self-hosted
 // engine) so old clients that don't send `engine` keep working unchanged.
-// NOTE: the ids 'fal_flux_dev'/'fal_nanobanana2' are kept as-is (not renamed
-// to 'runpod_flux_dev'/etc.) to avoid touching every file that references
-// them (Pricing.ts, GenerateForm.tsx, translations, existing DB rows) — as
-// of 2026-07-14 both now call RunPod's Public Endpoints, not fal.ai.
-const VALID_FLUX_ENGINES: FluxEngineId[] = ['runpod', 'fal_flux_dev', 'fal_nanobanana2', 'qwen_image', 'wan_t2i'];
-
-// Nano Banana 2 Edit's resolution tier (see NANOBANANA2_RESOLUTION_CREDIT_COST
-// in src/libs/Pricing.ts and buildRunPodNanoBanana2EditInput() in RunPod.ts).
-// Only meaningful when fluxEngine === 'fal_nanobanana2' AND a reference image
-// is attached (the actual Nano Banana 2 call) — the no-reference fallback to
-// Flux Dev always renders at its own fixed size and ignores this entirely.
-const VALID_NANOBANANA2_RESOLUTIONS: NanoBanana2Resolution[] = ['1k', '2k', '4k'];
+// NOTE: the id 'fal_flux_dev' is kept as-is (not renamed to
+// 'runpod_flux_dev') to avoid touching every file that references it
+// (Pricing.ts, GenerateForm.tsx, translations, existing DB rows) — as of
+// 2026-07-14 it calls RunPod's Public Endpoint, not fal.ai. 2026-07-15:
+// 'fal_nanobanana2' (Nano Banana 2) was removed from this selector — see
+// src/libs/Pricing.ts's FluxEngineId comment for why; the underlying
+// endpoint is still used directly by Face Swap's swap mode below.
+const VALID_FLUX_ENGINES: FluxEngineId[] = ['runpod', 'fal_flux_dev', 'qwen_image', 'wan_t2i'];
 
 /**
  * Starts a generation job (Flux image, Wan 2.2 video, or a one-click "Tools"
@@ -193,32 +188,19 @@ export async function POST(request: Request) {
     : 'runpod';
   const usingRunPodFlux = body.kind === 'flux' && fluxEngine === 'runpod';
 
-  // Only meaningful for an actual Nano Banana 2 Edit call (Top-tier engine +
-  // reference image) — the no-reference fallback to Flux Dev always renders
-  // at its own fixed size, so `resolution` is ignored there. Falls back to
-  // '1k' for anything invalid/missing, same rate as before this feature
-  // existed (see NANOBANANA2_RESOLUTION_CREDIT_COST in src/libs/Pricing.ts).
-  const usingNanoBanana2 = fluxEngine === 'fal_nanobanana2' && usingFluxReference;
-  const nanoBanana2Resolution: NanoBanana2Resolution = usingNanoBanana2 && VALID_NANOBANANA2_RESOLUTIONS.includes(body.resolution)
-    ? body.resolution
-    : '1k';
-
   // Maps the resolved engine selection onto the specific id
   // src/libs/PromptEnhance.ts tailors its word budget/rules for (see
   // ENGINE_PROFILES there) — mirrors exactly which backend the dispatch
-  // switch below actually calls for each combination, including the Nano
-  // Banana 2 -> Flux Dev fallback when no reference image is attached.
+  // switch below actually calls for each combination.
   const enhanceEngineId: EnhanceEngineId = body.kind === 'wan'
     ? 'wan_i2v'
     : fluxEngine === 'runpod'
       ? 'flux_schnell'
-      : fluxEngine === 'fal_nanobanana2'
-        ? (usingNanoBanana2 ? 'nanobanana2' : 'flux_dev')
-        : fluxEngine === 'fal_flux_dev'
-          ? 'flux_dev'
-          : fluxEngine === 'qwen_image'
-            ? 'qwen_image'
-            : 'wan_t2i';
+      : fluxEngine === 'fal_flux_dev'
+        ? 'flux_dev'
+        : fluxEngine === 'qwen_image'
+          ? 'qwen_image'
+          : 'wan_t2i';
 
   // 3-stage prompt pipeline (see src/libs/PromptPipeline.ts for the full
   // breakdown: auto-enhance -> reinforce composition -> send to RunPod).
@@ -287,8 +269,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // RunPod Public Endpoint engines (fal_flux_dev / fal_nanobanana2, and as of
-  // 2026-07-15 also the plain 'runpod' Standard engine — see
+  // RunPod Public Endpoint engines (fal_flux_dev, qwen_image, wan_t2i, and as
+  // of 2026-07-15 also the plain 'runpod' Standard engine — see
   // buildRunPodFluxSchnellInput()'s comment in src/libs/RunPod.ts) don't use
   // ComfyUI workflow.json graphs at all. Only a Standard-engine request WITH
   // a reference image (img2img — the public Flux Schnell endpoint has no
@@ -315,9 +297,7 @@ export async function POST(request: Request) {
   // existing anti-abuse daily limit.
   const isAdmin = await isAdminUser(userId);
   const creditCost = body.kind === 'flux'
-    ? usingNanoBanana2
-      ? NANOBANANA2_RESOLUTION_CREDIT_COST[nanoBanana2Resolution]
-      : FLUX_ENGINE_CREDIT_COST[fluxEngine]
+    ? FLUX_ENGINE_CREDIT_COST[fluxEngine]
     : body.kind === 'wan'
       ? wanCreditCost(typeof body.durationSeconds === 'number' ? body.durationSeconds : 5)
       : usingFaceSwapSwapMode
@@ -340,7 +320,7 @@ export async function POST(request: Request) {
 
   try {
     if (body.kind === 'flux') {
-      // 3-way engine selector (added 2026-07-13, moved fully off fal.ai onto
+      // Engine selector (added 2026-07-13, moved fully off fal.ai onto
       // RunPod Hub Public Endpoints 2026-07-14 — see src/libs/RunPod.ts's
       // "RunPod Hub Public Endpoints" section for why). 2026-07-15: 'runpod'
       // (Standard) also moved off the dedicated worker-comfyui pod onto
@@ -349,58 +329,39 @@ export async function POST(request: Request) {
       // generations; the public endpoint is flat per-image and cheaper) —
       // the dedicated pod is now only used for the reference-image (img2img)
       // case, since the public Schnell endpoint has no img2img mode.
-      //
-      // referenceImageBase64 arrives as bare base64 (no data: prefix — see
-      // GenerateForm.tsx's handleReferenceFileChange); RunPod's Nano Banana 2
-      // Edit endpoint takes an `images` array of URLs but also accepts a
-      // data: URI directly (same as fal's equivalent did) — built here.
-      //
-      // Nano Banana 2 Edit has no pure text-to-image mode on RunPod's Public
-      // Endpoint catalog (Edit-only, `images` is required) — per the
-      // 2026-07-14 decision, a Top-tier request with no reference image
-      // falls back to the Mid-tier Flux Dev engine rather than failing.
-      const referenceDataUrl = usingFluxReference
-        ? `data:image/png;base64,${body.referenceImageBase64}`
-        : null;
-
-      const job = fluxEngine === 'fal_nanobanana2' && referenceDataUrl
+      const job = fluxEngine === 'fal_flux_dev'
         ? await submitRunPodPublicJob(
-            'google-nano-banana-2-edit',
-            buildRunPodNanoBanana2EditInput({ prompt: modelPrompt, imageUrl: referenceDataUrl, resolution: nanoBanana2Resolution }),
+            'black-forest-labs-flux-1-dev',
+            buildRunPodFluxDevInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
           )
-        : fluxEngine === 'fal_flux_dev' || fluxEngine === 'fal_nanobanana2'
+        // qwen_image / wan_t2i (added 2026-07-15) are plain text-to-image
+        // engines with no reference-image mode on their RunPod Public
+        // Endpoints — a reference image attached while one of these is
+        // selected is simply ignored, same as any other pure t2i model.
+        : fluxEngine === 'qwen_image'
           ? await submitRunPodPublicJob(
-              'black-forest-labs-flux-1-dev',
-              buildRunPodFluxDevInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
+              'qwen-image-t2i',
+              buildQwenImageInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
             )
-          // qwen_image / wan_t2i (added 2026-07-15) are plain text-to-image
-          // engines with no reference-image mode on their RunPod Public
-          // Endpoints — a reference image attached while one of these is
-          // selected is simply ignored, same as any other pure t2i model.
-          : fluxEngine === 'qwen_image'
+          : fluxEngine === 'wan_t2i'
             ? await submitRunPodPublicJob(
-                'qwen-image-t2i',
-                buildQwenImageInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
+                'wan-2-6-t2i',
+                buildWanT2IInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
               )
-            : fluxEngine === 'wan_t2i'
-              ? await submitRunPodPublicJob(
-                  'wan-2-6-t2i',
-                  buildWanT2IInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
+            : usingFluxReference
+              ? await submitRunPodJob(
+                  'flux',
+                  buildFluxImg2ImgInput(img2imgWorkflow!, {
+                    prompt: modelPrompt,
+                    imageBase64: body.referenceImageBase64,
+                    denoise: typeof body.denoise === 'number' ? body.denoise : 0.55,
+                    seed: body.seed,
+                  }),
                 )
-              : usingFluxReference
-                ? await submitRunPodJob(
-                    'flux',
-                    buildFluxImg2ImgInput(img2imgWorkflow!, {
-                      prompt: modelPrompt,
-                      imageBase64: body.referenceImageBase64,
-                      denoise: typeof body.denoise === 'number' ? body.denoise : 0.55,
-                      seed: body.seed,
-                    }),
-                  )
-                : await submitRunPodPublicJob(
-                    'black-forest-labs-flux-1-schnell',
-                    buildRunPodFluxSchnellInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
-                  );
+              : await submitRunPodPublicJob(
+                  'black-forest-labs-flux-1-schnell',
+                  buildRunPodFluxSchnellInput({ prompt: modelPrompt, width: body.width, height: body.height, seed: body.seed }),
+                );
 
       const [row] = await db.insert(generationSchema).values({
         ownerId: userId,

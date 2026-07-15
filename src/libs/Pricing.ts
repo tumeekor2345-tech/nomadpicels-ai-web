@@ -70,33 +70,36 @@ export function getPackage(id: string): CreditPackage | undefined {
  * "AI Image" tool engine ids — the user picks which backend generates their
  * image. `runpod` (Standard) originally ran on a self-hosted Flux Schnell
  * pod (own dedicated worker-comfyui endpoint, GPU-hour billed — idle time
- * between generations still cost money). `fal_flux_dev` and `fal_nanobanana2`
- * were added 2026-07-13 hosted on fal.ai, then moved 2026-07-14 to RunPod
- * Hub's own Public Endpoints (`black-forest-labs-flux-1-dev` /
- * `google-nano-banana-2-edit`) after fal.ai's real per-image billing turned
- * out to run 5-10x its advertised rate. 2026-07-15: `runpod` (Standard) also
- * moved onto RunPod's public `black-forest-labs-flux-1-schnell` endpoint
- * ($0.0024/megapixel flat, zero idle cost) for the same reason — see
- * src/libs/RunPod.ts's "RunPod Hub Public Endpoints" section and
- * buildRunPodFluxSchnellInput(). The dedicated worker-comfyui pod is now only
- * used for Standard-engine requests with a reference image (img2img — the
- * public Schnell endpoint has no img2img mode) plus Photo Restore/Image
- * Effect/Face Swap, which still need it. The ids themselves were kept
- * unchanged (not renamed to `runpod_flux_dev`/etc.) to avoid touching every
- * file that references them. Flux.1 [dev] is a step up in quality for a
- * modest cost bump; Nano Banana 2 (Google's model) costs the most but has
- * meaningfully better identity/character consistency for reference-image
- * generations — RunPod's Public Endpoint for it is Edit-only (no bare
- * reference image -> falls back to the Flux Dev engine, see
- * /api/generate/route.ts).
+ * between generations still cost money). `fal_flux_dev` was added
+ * 2026-07-13 hosted on fal.ai, then moved 2026-07-14 to RunPod Hub's own
+ * Public Endpoint (`black-forest-labs-flux-1-dev`) after fal.ai's real
+ * per-image billing turned out to run 5-10x its advertised rate. 2026-07-15:
+ * `runpod` (Standard) also moved onto RunPod's public
+ * `black-forest-labs-flux-1-schnell` endpoint ($0.0024/megapixel flat, zero
+ * idle cost) for the same reason — see src/libs/RunPod.ts's "RunPod Hub
+ * Public Endpoints" section and buildRunPodFluxSchnellInput(). The dedicated
+ * worker-comfyui pod is now only used for Standard-engine requests with a
+ * reference image (img2img — the public Schnell endpoint has no img2img
+ * mode) plus Photo Restore/Image Effect/Face Swap, which still need it. The
+ * ids themselves were kept unchanged (not renamed to `runpod_flux_dev`/etc.)
+ * to avoid touching every file that references them. Flux.1 [dev] is a step
+ * up in quality for a modest cost bump.
  *
  * 2026-07-15: added two more RunPod Public Endpoint models at the user's
  * request — `qwen_image` (Qwen Image) and `wan_t2i` (Alibaba WAN 2.6),
  * both plain text-to-image only (no reference-image/edit mode — a reference
  * image is simply ignored if attached while one of these is selected). See
  * buildQwenImageInput() / buildWanT2IInput() in src/libs/RunPod.ts.
+ *
+ * 2026-07-15: removed `fal_nanobanana2` (Nano Banana 2 / Google's model) from
+ * this selector at the user's request — it was Edit-only (required a
+ * reference image, silently falling back to Flux Dev otherwise), which was
+ * confusing as a "AI Image" engine choice. The underlying RunPod Public
+ * Endpoint (`google-nano-banana-2-edit`) is still used by Face Swap's
+ * "2 зураг" (swap) mode — see buildNanoBanana2FaceSwapInput() in
+ * src/libs/RunPod.ts and FACE_SWAP_PRO_CREDIT_COST below — that is untouched.
  */
-export type FluxEngineId = 'runpod' | 'fal_flux_dev' | 'fal_nanobanana2' | 'qwen_image' | 'wan_t2i';
+export type FluxEngineId = 'runpod' | 'fal_flux_dev' | 'qwen_image' | 'wan_t2i';
 
 export const CREDIT_COST = {
   flux: 1, // engine: 'runpod' — kept as the flat default for backward compatibility
@@ -110,19 +113,19 @@ export const CREDIT_COST = {
  * Face Swap's "2 зураг" (swap) mode — added 2026-07-15 at the user's request
  * to mirror imagine.art's Target Image + Your Face layout. Unlike the
  * original style-preset mode (comfyui-faceswap-sdxl, flat 3 credits, GENERATES
- * a new portrait from a text prompt), swap mode reuses the AI Image tool's
- * Top-tier engine (`google-nano-banana-2-edit` RunPod Public Endpoint —
- * see buildNanoBanana2FaceSwapInput() in src/libs/RunPod.ts) so no new RunPod
- * endpoint had to be deployed — Nano Banana 2 is a general
- * instruction-following image editor capable of a real "replace only the
- * face, keep the rest of the photo" edit given two reference images. Priced
- * the same as Nano Banana 2 Edit @ 1K (see NANOBANANA2_RESOLUTION_CREDIT_COST
- * below) since it's the exact same endpoint/cost.
+ * a new portrait from a text prompt), swap mode reuses the
+ * `google-nano-banana-2-edit` RunPod Public Endpoint directly (see
+ * buildNanoBanana2FaceSwapInput() in src/libs/RunPod.ts) — Nano Banana 2 is a
+ * general instruction-following image editor capable of a real "replace only
+ * the face, keep the rest of the photo" edit given two reference images.
+ * This is independent of the "AI Image" tool's engine selector (which no
+ * longer offers Nano Banana 2 as of 2026-07-15 — see FluxEngineId above);
+ * Face Swap calls the endpoint on its own, flat-priced at 1K resolution.
  */
 export const FACE_SWAP_PRO_CREDIT_COST = 6;
 
 /**
- * Per-engine credit cost for the "AI Image" tool's 3-way selector. Priced
+ * Per-engine credit cost for the "AI Image" tool's engine selector. Priced
  * against RunPod Hub's official Public Endpoint rates
  * (docs.runpod.io/public-endpoints/reference) and the lowest per-credit
  * value across CREDIT_PACKAGES (Business, ~70₮/credit) so margin holds even
@@ -130,8 +133,6 @@ export const FACE_SWAP_PRO_CREDIT_COST = 6;
  *   - fal_flux_dev (RunPod `black-forest-labs-flux-1-dev`, $0.02/megapixel):
  *     ~$0.021-0.047/image depending on aspect ratio -> 2 credits (140₮ min
  *     revenue) still comfortably covers it.
- *   - fal_nanobanana2 (RunPod `google-nano-banana-2-edit`, $0.0875 @ 1K):
- *     -> 6 credits (420₮ min revenue).
  *   - qwen_image (RunPod `qwen-image-t2i`, $0.02/image flat) -> 2 credits,
  *     same as fal_flux_dev (same ballpark real cost).
  *   - wan_t2i (RunPod `wan-2-6-t2i`, $0.03/image flat) -> 3 credits.
@@ -139,29 +140,9 @@ export const FACE_SWAP_PRO_CREDIT_COST = 6;
 export const FLUX_ENGINE_CREDIT_COST: Record<FluxEngineId, number> = {
   runpod: CREDIT_COST.flux,
   fal_flux_dev: 2,
-  fal_nanobanana2: 6, // = NANOBANANA2_RESOLUTION_CREDIT_COST['1k'] — kept for the Flux-Dev-fallback case (no reference image), which always renders at 1K regardless of the requested resolution.
   qwen_image: 2,
   wan_t2i: 3,
 };
-
-/**
- * Nano Banana 2 Edit (Top-tier) is the only engine whose RunPod Public
- * Endpoint offers a resolution tier (`1k` / `2k` / `4k` — see
- * buildRunPodNanoBanana2EditInput() in src/libs/RunPod.ts), priced
- * per-resolution by RunPod at $0.0875 / $0.13 / $0.175. Credit costs below
- * scale from the existing 6-credit/1K rate (6 credits ÷ $0.0875 ≈
- * 68.6 credits/$) so margin stays consistent across tiers:
- *   - 2K: $0.13 × 68.6 ≈ 8.9 -> 9 credits
- *   - 4K: $0.175 × 68.6 ≈ 12.0 -> 12 credits
- * Added 2026-07-15 at the user's request ("4K гэх захиалга өгч болох уу").
- */
-export const NANOBANANA2_RESOLUTION_CREDIT_COST = {
-  '1k': FLUX_ENGINE_CREDIT_COST.fal_nanobanana2,
-  '2k': 9,
-  '4k': 12,
-} as const;
-
-export type NanoBanana2Resolution = keyof typeof NANOBANANA2_RESOLUTION_CREDIT_COST;
 
 /**
  * RunPod Hub's public `wan-2-2-i2v-720` endpoint (see src/libs/RunPod.ts) is

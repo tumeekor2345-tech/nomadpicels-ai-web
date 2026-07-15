@@ -154,7 +154,7 @@ const RUNPOD_PUBLIC_JOB_PREFIX = 'rpub::';
 export type RunPodPublicEndpointId
   = | 'black-forest-labs-flux-1-schnell' // Standard "AI Image" engine — $0.0024/megapixel (added 2026-07-15, see buildRunPodFluxSchnellInput() comment)
     | 'black-forest-labs-flux-1-dev' // Mid-tier "AI Image" engine — $0.02/megapixel
-    | 'google-nano-banana-2-edit' // Top-tier "AI Image" engine — $0.0875 (1K) / $0.13 (2K) / $0.175 (4K)
+    | 'google-nano-banana-2-edit' // Face Swap "2 зураг" (swap) mode only (see buildNanoBanana2FaceSwapInput() below) — $0.0875 (1K), always used at 1K
     | 'qwen-image-t2i' // "AI Image" engine — Qwen Image, text-to-image only — $0.02/image flat (added 2026-07-15, see buildQwenImageInput() comment)
     | 'wan-2-6-t2i' // "AI Image" engine — Alibaba WAN 2.6, text-to-image only — $0.03/image flat (added 2026-07-15, see buildWanT2IInput() comment)
     | 'wan-2-2-i2v-720'; // "AI Video" — $0.30/5s, $0.06/s flat beyond that
@@ -344,27 +344,6 @@ export function buildRunPodFluxDevInput(params: {
 }
 
 /**
- * `google-nano-banana-2-edit` — Top-tier engine. Requires at least one
- * reference image (RunPod's Public Endpoint catalog only offers the "Edit"
- * variant of Nano Banana 2, no pure text-to-image mode) — /api/generate's
- * route falls back to buildRunPodFluxDevInput() when the user hasn't
- * uploaded a reference image, per the 2026-07-14 decision to keep Top-tier
- * usable either way rather than blocking generation outright.
- */
-export function buildRunPodNanoBanana2EditInput(params: {
-  prompt: string;
-  imageUrl: string;
-  resolution?: '1k' | '2k' | '4k';
-}) {
-  return {
-    images: [params.imageUrl],
-    prompt: params.prompt,
-    resolution: params.resolution ?? '1k',
-    output_format: 'png',
-  };
-}
-
-/**
  * Face Swap's "2 зураг" (swap) mode — added 2026-07-15. The original Face
  * Swap tool (buildFaceSwapInput() below, comfyui-faceswap-sdxl) can only
  * GENERATE a brand new portrait from a text prompt using one reference face
@@ -373,12 +352,20 @@ export function buildRunPodNanoBanana2EditInput(params: {
  * after seeing imagine.art's "Target Image" + "Your Face" layout. A true
  * pixel-level swap-in-place (ReActor/inswapper-style) would need a whole new
  * dedicated RunPod endpoint deployed — instead this reuses the ALREADY
- * DEPLOYED `google-nano-banana-2-edit` Public Endpoint (same one the AI
- * Image tool's Top-tier engine uses): Nano Banana 2 is Google's
- * instruction-following multimodal image editor and accepts multiple
- * reference images in its `images` array, so handing it the target photo
- * first and the face photo second with an explicit instruction gets a real
- * "replace only the face" edit without provisioning any new infrastructure.
+ * DEPLOYED `google-nano-banana-2-edit` Public Endpoint: Nano Banana 2 is
+ * Google's instruction-following multimodal image editor and accepts
+ * multiple reference images in its `images` array, so handing it the target
+ * photo first and the face photo second with an explicit instruction gets a
+ * real "replace only the face" edit without provisioning any new
+ * infrastructure.
+ *
+ * 2026-07-15 (later): the "AI Image" tool's own Nano Banana 2 engine option
+ * (which used to call this same endpoint via buildRunPodNanoBanana2EditInput,
+ * now removed — see src/libs/Pricing.ts's FluxEngineId comment) was dropped
+ * at the user's request, since it was Edit-only (needed a reference image,
+ * silently falling back to Flux Dev otherwise) and confusing as a plain
+ * "AI Image" choice. This Face Swap builder is unaffected — it calls
+ * `google-nano-banana-2-edit` directly and independently.
  */
 export function buildNanoBanana2FaceSwapInput(params: {
   targetImageUrl: string;

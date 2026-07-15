@@ -36,13 +36,11 @@ import { translateMongolianToEnglish } from '@/libs/Translate';
  *      — silently falling back to the raw prompt here would bypass the
  *      semantic safety check. As of 2026-07-15 this stage is tailored per
  *      the SPECIFIC downstream engine (`EnhanceEngineId`: flux_schnell,
- *      flux_dev, nanobanana2, qwen_image, wan_t2i, wan_i2v) rather than just
- *      the broad flux/wan `kind` — see src/libs/PromptEnhance.ts's
- *      ENGINE_PROFILES for why each engine gets its own word budget. The
- *      caller (src/app/api/generate/route.ts) resolves the actual engine
- *      that will run (accounting for fallbacks like Nano Banana 2 -> Flux
- *      Dev when no reference image is attached) and passes that resolved id
- *      in here.
+ *      flux_dev, qwen_image, wan_t2i, wan_i2v) rather than just the broad
+ *      flux/wan `kind` — see src/libs/PromptEnhance.ts's ENGINE_PROFILES for
+ *      why each engine gets its own word budget. The caller
+ *      (src/app/api/generate/route.ts) resolves the actual engine that will
+ *      run and passes that resolved id in here.
  *   2. REINFORCE — src/libs/CompositionReinforcement.ts: if full-body
  *      framing was requested, adds the framing anchor, keyed off the
  *      ORIGINAL (pre-enhancement) prompt so the Mongolian keyword check
