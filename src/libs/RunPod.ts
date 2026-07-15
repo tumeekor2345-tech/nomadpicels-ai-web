@@ -23,8 +23,8 @@ import { Env } from '@/libs/Env';
  *   the correct input shape for it.
  *
  * Usage:
- *   const job = await runSyncRunPodJob('flux', buildFluxInput({ prompt }));
- *   const images = extractImages(job);
+ *   const job = await submitRunPodJob('faceswap', buildFaceSwapInput({ prompt, imageUrl }));
+ *   const image = extractFaceSwapImage(await pollRunPodJob('faceswap', job.id));
  */
 
 const RUNPOD_BASE_URL = 'https://api.runpod.ai/v2';
@@ -99,30 +99,6 @@ export async function submitRunPodJob(
   return res.json() as Promise<RunPodJobStatus>;
 }
 
-/**
- * Runs a job synchronously and waits for the result (RunPod holds the
- * connection open, up to ~90s before you should switch to submit+poll).
- * Good for fast Flux-schnell image generations. For Wan 2.2 video, prefer
- * submitRunPodJob + pollRunPodJob since it can take longer.
- */
-export async function runSyncRunPodJob(
-  kind: GenerationKind,
-  input: Record<string, unknown>,
-): Promise<RunPodJobStatus> {
-  const endpointId = endpointIdFor(kind);
-  const res = await fetch(`${RUNPOD_BASE_URL}/${endpointId}/runsync`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({ input }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`RunPod runsync failed (${kind}): ${res.status} ${await res.text()}`);
-  }
-
-  return res.json() as Promise<RunPodJobStatus>;
-}
-
 /** Checks the status of a previously submitted job. */
 export async function getRunPodJobStatus(
   kind: GenerationKind,
@@ -138,15 +114,6 @@ export async function getRunPodJobStatus(
   }
 
   return res.json() as Promise<RunPodJobStatus>;
-}
-
-/** Cancels a queued or in-progress job (e.g. user closed the tab). */
-export async function cancelRunPodJob(kind: GenerationKind, jobId: string): Promise<void> {
-  const endpointId = endpointIdFor(kind);
-  await fetch(`${RUNPOD_BASE_URL}/${endpointId}/cancel/${jobId}`, {
-    method: 'POST',
-    headers: authHeaders(),
-  });
 }
 
 // --- RunPod Hub "Public Endpoints" -----------------------------------------
@@ -495,15 +462,6 @@ export async function pollRunPodJob(
   throw new Error(`RunPod job ${jobId} (${kind}) timed out after ${timeoutMs}ms`);
 }
 
-/**
- * Pulls generated image data out of a completed worker-comfyui job
- * (Flux). Returns base64 strings or S3 URLs depending on your worker's
- * S3 configuration — see docs/configuration.md in worker-comfyui.
- */
-export function extractImages(status: RunPodJobStatus): Array<{ filename: string; type: 'base64' | 's3_url'; data: string }> {
-  return status.output?.images ?? [];
-}
-
 // --- ComfyUI workflow patching (Flux) -----------------------------------
 
 /** A ComfyUI "API format" workflow graph, keyed by node id. */
@@ -517,9 +475,13 @@ export type ComfyUIWorkflow = Record<string, {
  * Deep-clones a workflow and overwrites specific node inputs — e.g. the
  * CLIPTextEncode node's `text` field, or a KSampler's `seed`. Node ids come
  * from YOUR exported workflow.json (open it and search for the node you
- * want to control), not from this file.
+ * want to control), not from this file. Only used internally by
+ * buildFluxImg2ImgInput() below (the txt2img path via buildFluxInput() was
+ * removed 2026-07-15 as dead code once every "AI Image" engine moved onto
+ * RunPod Hub Public Endpoints — only Photo Restore / Image Effect still use
+ * the dedicated worker-comfyui img2img workflow).
  */
-export function patchWorkflow(
+function patchWorkflow(
   workflow: ComfyUIWorkflow,
   patches: Record<string, Record<string, unknown>>,
 ): ComfyUIWorkflow {
@@ -536,76 +498,6 @@ export function patchWorkflow(
   }
 
   return patched;
-}
-
-/**
- * Builds the `/run` or `/runsync` input for the Flux (worker-comfyui)
- * endpoint. Uses `src/libs/workflows/flux-schnell-txt2img.json` — this is the
- * official `workflow_flux1_schnell.json` example from the runpod-workers/
- * worker-comfyui repo (test_resources/workflows/), which matches exactly the
- * `runpod/worker-comfyui:5.8.5-flux1-schnell` image's baked-in model files
- * (flux1-schnell.safetensors, t5xxl_fp8_e4m3fn, clip_l, ae.safetensors) — so
- * the node ids below are confirmed correct for that image, not guessed.
- */
-export function buildFluxInput(
-  workflow: ComfyUIWorkflow,
-  params: { prompt: string; width?: number; height?: number; seed?: number },
-) {
-  const FLUX_PROMPT_NODE_ID = '6'; // CLIPTextEncode (prompt)
-  const FLUX_SIZE_NODE_ID = '5'; // EmptyLatentImage
-  const FLUX_SEED_NODE_ID = '25'; // RandomNoise
-
-  // NOTE: this workflow previously ran every generation through a
-  // custom-trained Mongolian-style LoRA (LoraLoaderModelOnly node "30",
-  // mnppl_mongolian_lora_v1.safetensors). Removed 2026-07-09 at the user's
-  // request: even after lowering strength (0.7 -> 0.35) the LoRA's training
-  // set (Wikimedia Commons portraits/headshots) kept biasing every
-  // generation toward tight bust-crop framing regardless of the prompt's
-  // requested composition, and building a better-balanced replacement
-  // dataset was deprioritized. UNETLoader ("12") now feeds the sampler
-  // nodes directly. Mongolian ethnicity/features are still steered via
-  // plain-text prompt reinforcement — see
-  // src/libs/EthnicityReinforcement.ts — which is unaffected by this
-  // change. If a better-trained LoRA is built later, re-add a
-  // LoraLoaderModelOnly node between "12" and "17"/"22" in
-  // src/libs/workflows/flux-schnell-txt2img.json and patch its
-  // strength_model here the same way.
-  //
-  // HI-RES FIX — added 2026-07-10 (1.5x latent upscale + second detail pass
-  // via nodes 26/27/28/40), REMOVED the same day at the user's request: live
-  // testing showed generations drifting away from the requested subject
-  // (e.g. "Mongolian woman wearing a deel" produced unrelated clothing/
-  // architecture) and roughly doubled generation time without a clear
-  // quality win. At the time this was blamed on the hi-res pass itself and
-  // reverted back to a single base pass (steps bumped 12 -> 20 "as a partial
-  // substitute for the detail the hi-res pass was adding"). If hi-res fix is
-  // revisited later, see git history around this date for the node graph
-  // (LatentUpscaleBy "40" fed by the base SamplerCustomAdvanced "13", then a
-  // second RandomNoise/BasicScheduler/SamplerCustomAdvanced at denoise ~0.45).
-  //
-  // STEPS FIX — 2026-07-13: the real cause of that subject-drift symptom was
-  // almost certainly the step count, not the hi-res pass. flux1-schnell is a
-  // timestep-distilled model — Black Forest Labs' own docs/default config
-  // recommend 1-4 steps (up to ~8 at most); using more doesn't improve
-  // quality and pushes sampling outside the regime the distillation assumed,
-  // which can make the model detach from the prompt conditioning entirely and
-  // generate confident-looking but unrelated photorealistic content (live
-  // reproduced 2026-07-13: prompt "iphone 17promax" at steps=20 returned an
-  // unrelated red building, then an unrelated motorcycle — same seed-driven
-  // "different every time" pattern the hi-res-era bug reports described).
-  // Dropped steps 20 -> 8 (the user's choice, staying at the very top of
-  // schnell's documented 1-4-steps-typical/8-max range rather than the
-  // stricter 4-step default) to get back inside schnell's actual
-  // distillation target; flux-schnell-img2img.json's steps needed the same
-  // fix. Re-test subject fidelity after this change before ever bumping
-  // steps up again.
-  const patched = patchWorkflow(workflow, {
-    [FLUX_PROMPT_NODE_ID]: { text: params.prompt },
-    [FLUX_SIZE_NODE_ID]: { width: params.width ?? 1024, height: params.height ?? 1024 },
-    [FLUX_SEED_NODE_ID]: { noise_seed: params.seed ?? Math.floor(Math.random() * 1_000_000_000_000) },
-  });
-
-  return { workflow: patched };
 }
 
 /**
@@ -667,9 +559,9 @@ export function buildFluxImg2ImgInput(
 
   // NOTE: this workflow previously ran through a LoraLoaderModelOnly node
   // ("32", mnppl Mongolian-style LoRA) between UNETLoader ("12") and the
-  // sampler nodes. Removed 2026-07-09 along with buildFluxInput()'s LoRA
-  // node — see the comment there for why. UNETLoader ("12") now feeds the
-  // sampler nodes directly.
+  // sampler nodes. Removed 2026-07-09 — see src/libs/EthnicityReinforcement.ts
+  // for the plain-text prompt reinforcement that replaced it. UNETLoader
+  // ("12") now feeds the sampler nodes directly.
   const patched = patchWorkflow(workflow, {
     [FLUX_PROMPT_NODE_ID]: { text: params.prompt },
     [FLUX_SEED_NODE_ID]: { noise_seed: params.seed ?? Math.floor(Math.random() * 1_000_000_000_000) },

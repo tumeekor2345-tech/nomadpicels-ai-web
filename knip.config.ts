@@ -5,16 +5,17 @@ const config: KnipConfig = {
   ignore: [
     'checkly.config.ts',
     'src/components/ui/*',
-    'src/libs/DB.ts',
     'src/libs/I18n.ts',
-    'src/libs/Logger.ts',
     'src/types/Auth.ts',
-    'src/utils/DBConnection.ts',
+    // knip's static analysis can't trace this: it's only invoked from inside
+    // a quoted shell-argument string in package.json's db-server:file /
+    // db-server:memory scripts (`pglite-server ... --run "node
+    // scripts/run-db-migrate.js"`), so it looks unused but genuinely isn't.
+    'scripts/run-db-migrate.js',
   ],
   // Dependencies to ignore during analysis
   ignoreDependencies: [
     '@clerk/shared',
-    '@logtape/logtape',
     '@swc/helpers', // Avoid error in CI: "`npm ci` can only install packages when your package.json and package-lock.json or npm-shrinkwrap.json are in sync."
   ],
   // Include custom Playwright test file suffixes
