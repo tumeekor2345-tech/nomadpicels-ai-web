@@ -42,35 +42,6 @@
     "section_description": "Кредит худалдан аваад зураг, видео үүсгэхэд зарцуулна — сарын захиалга шаардлагагүй.",
     "button_text": "Эхлэх"
   },
-  "PricingPlans": {
-    "free_plan_name": "Үнэгүй",
-    "premium_plan_name": "Бүтээлч",
-    "enterprise_plan_name": "Студи"
-  },
-  "PricingCard": {
-    "free_plan_description": "NomadPixels AI-г турших",
-    "premium_plan_description": "Ганц бүтээлчдэд",
-    "enterprise_plan_description": "Баг, агентлагт",
-    "plan_price": "{price}₮",
-    "plan_interval_month": "/ сар",
-    "plan_interval_year": "/ жил"
-  },
-  "PricingFeatures": {
-    "feature_team_member": "Хамгийн ихдээ {number} гишүүн",
-    "feature_website": "Хамгийн ихдээ {number} төсөл",
-    "feature_storage": "{number} GB хадгалах сан",
-    "feature_transfer": "Сард {number} үүсгэлт",
-    "feature_email_support": "И-мэйл дэмжлэг"
-  },
-  "SponsorLogos": {
-    "sponsored_by": "Дэмжигч",
-    "clerk_logo": "Clerk лого",
-    "sentry_logo": "Sentry лого",
-    "crowdin_logo": "Crowdin лого",
-    "arcjet_logo": "Arcjet лого",
-    "coderabbit_logo": "CodeRabbit лого",
-    "nextjs_boilerplate_logo": "Next.js SaaS Boilerplate лого"
-  },
   "FAQ": {
     "question1": "NomadPixels AI ямар загвар ашигладаг вэ?",
     "answer1": "Зургийг Flux (schnell), видеог Wan 2.2 загвараар үүсгэдэг бөгөөд хоёулаа түрээсийн RunPod GPU дээр ажилладаг.",
@@ -109,8 +80,6 @@
     "meta_title": "NomadPixels AI Dashboard",
     "meta_description": "AI зураг, видеогоо үүсгэж, удирдаж, татаж авна уу.",
     "home": "Нүүр",
-    "create": "Үүсгэх",
-    "tools": "Tools",
     "billing": "Төлбөр",
     "settings": "Байгууллага",
     "admin": "Админ",
@@ -126,12 +95,7 @@
     "buy_credits": "Кредит худалдаж авах"
   },
   "DashboardIndexPage": {
-    "title_bar": "Dashboard",
     "title_bar_description": "Секундын дотор гайхалтай AI зураг, видео үүсгээрэй.",
-    "message_state_title": "Ажлаа эхлүүлье",
-    "message_state_description_plain": "Шинэ зураг (Flux) эсвэл видео (Wan 2.2) үүсгэж эхлээрэй, эсвэл кредит багц худалдан аваарай.",
-    "cta_create": "Үүсгэх",
-    "cta_billing": "Кредит худалдан авах",
     "welcome": "Тавтай морил",
     "welcome_named": "Тавтай морил, {name}!",
     "image_card_title": "AI Зураг үүсгэгч",
@@ -147,8 +111,6 @@
     "recent_empty": "Одоохондоо юу ч үүсгээгүй байна — дээрээс эхний зураг эсвэл видеогоо үүсгэж үзнэ үү."
   },
   "CreatePage": {
-    "title_bar": "Үүсгэх",
-    "title_bar_description": "AI зураг (Flux) эсвэл видео (Wan 2.7) үүсгэнэ үү",
     "title_bar_image": "AI Зураг",
     "title_bar_description_image": "Flux ашиглан AI зураг үүсгэнэ үү",
     "title_bar_video": "AI Видео",
@@ -223,20 +185,6 @@
     "reference_influence_low": "Бага",
     "reference_influence_medium": "Дунд",
     "reference_influence_high": "Их",
-    "enhance_button": "Санаагаа сайжруул",
-    "enhancing": "Сайжруулж байна...",
-    "enhance_preview_title": "Сайжруулсан санаа (засварлаж болно)",
-    "enhance_english_preview_title": "Бэлэн англи орчуулга",
-    "enhance_translating": "Шинэчилж байна...",
-    "enhance_use": "Ашиглах",
-    "enhance_cancel": "Болих",
-    "enhance_not_configured": "Энэ функц одоогоор тохируулагдаагүй байна.",
-    "enhance_failed": "Сайжруулж чадсангүй — дахин оролдоно уу.",
-    "enhance_blocked": "Энэ санаа манай агуулгын бодлогод харшилж байна.",
-    "final_prompt_title": "Эцсийн Prompt (Flux/Wan-д очих текст)",
-    "final_prompt_hint": "Таны бичсэн санааг AI автоматаар сайжруулж, дэлгэрэнгүй болгосон бодит текст. Шууд засварлаж болно — засварласан текст л илгээгдэнэ.",
-    "final_prompt_loading": "Тооцоолж байна...",
-    "final_prompt_refresh": "Шинэчлэх",
     "history_view": "Томруулж харах",
     "history_lightbox_close": "Хаах"
   },
