@@ -14,3 +14,5 @@ test.describe('Sanity', () => {
 
       await expect(page.getByText('Секундын дотор гайхалтай')).toBeVisible();
     });
+  });
+});
