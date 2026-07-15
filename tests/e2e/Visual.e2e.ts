@@ -5,7 +5,7 @@ test.describe('Visual testing', () => {
     test('should take screenshot of the homepage', async ({ page }, testInfo) => {
       await page.goto('/');
 
-      await expect(page.getByText('Секундын дотор гайхалтай')).toBeVisible();
+      await expect(page.getByText('Create stunning')).toBeVisible();
 
       await takeSnapshot(page, testInfo);
     });
