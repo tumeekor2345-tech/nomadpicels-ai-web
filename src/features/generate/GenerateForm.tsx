@@ -137,10 +137,6 @@ export const GenerateForm = (props: {
     referenceInfluenceLow: string;
     referenceInfluenceMedium: string;
     referenceInfluenceHigh: string;
-    finalPromptTitle: string;
-    finalPromptHint: string;
-    finalPromptLoading: string;
-    finalPromptRefresh: string;
     historyView: string;
     historyLightboxClose: string;
   };
@@ -196,75 +192,6 @@ export const GenerateForm = (props: {
   // the current "Үр дүн" result, not on past history items). Clicking a
   // history image opens it full-size here, with its own download link.
   const [lightboxImage, setLightboxImage] = useState<{ src: string; filename: string; caption: string } | null>(null);
-
-  // "Эцсийн Prompt" — stage 3 of the pipeline in src/libs/PromptPipeline.ts,
-  // exposed 2026-07-09 so the user can see (and edit) the exact English text
-  // that will reach Flux/Wan, instead of the pipeline running invisibly
-  // server-side. Since 2026-07-16 this box also carries the automatic Claude
-  // Haiku prompt enhancement (see PromptPipeline.ts) — the old separate
-  // "Санаагаа сайжруул" button/preview flow was removed at the user's
-  // request in favor of always auto-enhancing from whatever keywords the
-  // user typed, with this box as the one place to see/adjust the result.
-  // Auto-refreshes (debounced) whenever the source prompt/style/lens
-  // changes, UNLESS the user has hand-edited the box — editing it stops
-  // auto-refresh from clobbering their edit until they explicitly click
-  // "Шинэчлэх". Whatever is in this box at submit time is sent as
-  // `finalPromptOverride` and used as-is server-side.
-  const [finalPrompt, setFinalPrompt] = useState('');
-  const [finalPromptLoading, setFinalPromptLoading] = useState(false);
-  const [finalPromptEdited, setFinalPromptEdited] = useState(false);
-  const finalPromptDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const sourcePromptForPreview = kind === 'flux' ? buildFinalPrompt(prompt, style, lens) : prompt;
-
-  const fetchFinalPromptPreview = async (source: string) => {
-    if (!source.trim()) {
-      setFinalPrompt('');
-      return;
-    }
-
-    setFinalPromptLoading(true);
-
-    try {
-      const res = await fetch('/api/generate/preview-prompt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: source, kind }),
-      });
-      const data = await res.json();
-
-      if (res.ok && typeof data.finalPrompt === 'string') {
-        setFinalPrompt(data.finalPrompt);
-      }
-    } catch {
-      // Silent — the box just keeps showing the last known value. Submit
-      // still works without a fresh preview (server recomputes it anyway
-      // when finalPromptOverride is empty).
-    } finally {
-      setFinalPromptLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (finalPromptEdited) {
-      return;
-    }
-
-    if (finalPromptDebounce.current) {
-      clearTimeout(finalPromptDebounce.current);
-    }
-
-    finalPromptDebounce.current = setTimeout(() => {
-      fetchFinalPromptPreview(sourcePromptForPreview);
-    }, 600);
-
-    return () => {
-      if (finalPromptDebounce.current) {
-        clearTimeout(finalPromptDebounce.current);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourcePromptForPreview, finalPromptEdited, kind]);
 
   useEffect(() => {
     let cancelled = false;
@@ -350,17 +277,15 @@ export const GenerateForm = (props: {
     setSubmitting(true);
     setStatusText(props.labels.queued);
 
-    // Whatever is currently in the "Эцсийн Prompt" box (stage 3 — see
-    // src/libs/PromptPipeline.ts) is sent as finalPromptOverride, so the
-    // server uses it as-is instead of recomputing translate+reinforce. This
-    // is what makes the exposed box actually control generation, not just
-    // display info.
+    // The raw idea goes straight to the server, which runs the full
+    // auto-enhance pipeline invisibly (see src/libs/PromptPipeline.ts) — no
+    // client-side preview/override step anymore, per the user's 2026-07-16
+    // request to make enhancement fully automatic and not shown on screen.
     const body = kind === 'flux'
       ? {
           kind,
           engine,
           prompt: buildFinalPrompt(prompt, style, lens),
-          finalPromptOverride: finalPrompt,
           width: ASPECT_RATIOS.find(r => r.id === aspectRatio)?.width,
           height: ASPECT_RATIOS.find(r => r.id === aspectRatio)?.height,
           // Only meaningful for the Top-tier (Nano Banana 2) engine WITH a
@@ -378,7 +303,6 @@ export const GenerateForm = (props: {
       : {
           kind,
           prompt,
-          finalPromptOverride: finalPrompt,
           imageUrl,
           durationSeconds: duration,
           size: WAN_SIZES.find(r => r.id === wanAspectRatio)?.size,
@@ -706,41 +630,6 @@ export const GenerateForm = (props: {
               onChange={e => setPrompt(e.target.value)}
               placeholder={props.labels.promptPlaceholder}
               rows={5}
-            />
-          </div>
-
-          <div className="
-            flex flex-col gap-1.5 rounded-md border border-input bg-muted p-3
-          "
-          >
-            <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="finalPrompt" className="text-xs font-semibold">
-                {props.labels.finalPromptTitle}
-              </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => {
-                  setFinalPromptEdited(false);
-                  fetchFinalPromptPreview(sourcePromptForPreview);
-                }}
-              >
-                {props.labels.finalPromptRefresh}
-              </Button>
-            </div>
-            <div className="text-xs text-muted-foreground">{props.labels.finalPromptHint}</div>
-            <Textarea
-              id="finalPrompt"
-              value={finalPromptLoading ? props.labels.finalPromptLoading : finalPrompt}
-              disabled={finalPromptLoading}
-              onChange={(e) => {
-                setFinalPrompt(e.target.value);
-                setFinalPromptEdited(true);
-              }}
-              rows={4}
-              className="bg-background text-xs"
             />
           </div>
 

@@ -102,10 +102,6 @@ export default async function CreateVideoPage(props: {
           referenceInfluenceLow: t('reference_influence_low'),
           referenceInfluenceMedium: t('reference_influence_medium'),
           referenceInfluenceHigh: t('reference_influence_high'),
-          finalPromptTitle: t('final_prompt_title'),
-          finalPromptHint: t('final_prompt_hint'),
-          finalPromptLoading: t('final_prompt_loading'),
-          finalPromptRefresh: t('final_prompt_refresh'),
           historyView: t('history_view'),
           historyLightboxClose: t('history_lightbox_close'),
         }}
