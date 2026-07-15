@@ -146,15 +146,6 @@ export async function createQPayInvoice(req: QPayInvoiceRequest): Promise<QPayIn
   return res.json() as Promise<QPayInvoiceResponse>;
 }
 
-/** Cancels an invoice (e.g. cart abandoned before payment). */
-export async function cancelQPayInvoice(invoiceId: string): Promise<void> {
-  const res = await authedFetch(`/v2/invoice/${invoiceId}`, { method: 'DELETE' });
-
-  if (!res.ok) {
-    throw new Error(`QPay invoice cancel failed: ${res.status} ${await res.text()}`);
-  }
-}
-
 /**
  * Confirms payment after receiving the QPay callback. Call this from your
  * `callback_url` route handler — do NOT poll this on a cron job; QPay POSTs
