@@ -58,7 +58,10 @@ export default async function ContactPage(props: ContactProps) {
           <p className="text-sm text-muted-foreground">{c.emailLabel}</p>
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
-            className="text-lg font-medium text-primary hover:underline"
+            className="
+              text-lg font-medium text-primary
+              hover:underline
+            "
           >
             {SUPPORT_EMAIL}
           </a>

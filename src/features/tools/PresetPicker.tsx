@@ -44,43 +44,43 @@ import {
 
 // Keys match the `icon` field values used in src/libs/PresetVisuals.ts.
 const ICON_MAP: Record<string, LucideIcon> = {
-  ban: Ban,
-  camera: Camera,
-  clapperboard: Clapperboard,
-  sparkles: Sparkles,
-  brush: Brush,
-  box: Box,
-  droplet: Droplet,
-  zap: Zap,
+  'ban': Ban,
+  'camera': Camera,
+  'clapperboard': Clapperboard,
+  'sparkles': Sparkles,
+  'brush': Brush,
+  'box': Box,
+  'droplet': Droplet,
+  'zap': Zap,
   'wand-sparkles': WandSparkles,
-  contrast: Contrast,
-  disc: Disc,
+  'contrast': Contrast,
+  'disc': Disc,
   'book-open': BookOpen,
-  image: ImageIcon,
+  'image': ImageIcon,
   'message-square': MessageSquare,
-  sun: Sun,
-  snowflake: Snowflake,
-  palette: Palette,
-  leaf: Leaf,
-  gem: Gem,
-  sunset: Sunset,
-  film: Film,
+  'sun': Sun,
+  'snowflake': Snowflake,
+  'palette': Palette,
+  'leaf': Leaf,
+  'gem': Gem,
+  'sunset': Sunset,
+  'film': Film,
   'cloud-moon': CloudMoon,
-  focus: Focus,
-  wind: Wind,
-  layers: Layers,
-  aperture: Aperture,
-  minus: Minus,
+  'focus': Focus,
+  'wind': Wind,
+  'layers': Layers,
+  'aperture': Aperture,
+  'minus': Minus,
   'chevron-up': ChevronUp,
   'chevron-down': ChevronDown,
   'circle-dot': CircleDot,
   'zoom-in': ZoomIn,
-  maximize: Maximize,
-  user: User,
-  navigation: Navigation,
+  'maximize': Maximize,
+  'user': User,
+  'navigation': Navigation,
   'arrow-up-from-line': ArrowUpFromLine,
   'rotate-cw': RotateCw,
-  circle: CircleIcon,
+  'circle': CircleIcon,
 };
 
 type PresetPickerProps<TId extends string> = {
@@ -124,14 +124,16 @@ export function PresetPicker<TId extends string>(props: PresetPickerProps<TId>) 
                 className={`
                   flex aspect-square w-full items-center justify-center
                   rounded-md border-2 transition
-                  ${selected ? 'border-primary ring-2 ring-primary/40' : 'border-transparent'}
+                  ${selected
+              ? 'border-primary ring-2 ring-primary/40'
+              : `border-transparent`}
                   group-hover:border-primary/60
                 `}
                 style={{ background: visual?.gradient }}
               >
                 <Icon
                   className={`
-                    size-5 drop-shadow
+                    size-5 drop-shadow-sm
                     ${selected ? 'text-white' : 'text-white/90'}
                   `}
                   strokeWidth={2}
@@ -140,7 +142,9 @@ export function PresetPicker<TId extends string>(props: PresetPickerProps<TId>) 
               <span
                 className={`
                   line-clamp-2 text-center text-[11px] leading-tight
-                  ${selected ? 'font-semibold text-foreground' : 'text-muted-foreground'}
+                  ${selected
+              ? 'font-semibold text-foreground'
+              : `text-muted-foreground`}
                 `}
               >
                 {labels[preset.id]}

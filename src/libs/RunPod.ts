@@ -180,8 +180,10 @@ export async function cancelRunPodJob(kind: GenerationKind, jobId: string): Prom
 
 const RUNPOD_PUBLIC_JOB_PREFIX = 'rpub::';
 
-/** The RunPod Hub Public Endpoint ids this app calls — see
- * docs.runpod.io/public-endpoints/reference for the full catalog. */
+/**
+ * The RunPod Hub Public Endpoint ids this app calls — see
+ * docs.runpod.io/public-endpoints/reference for the full catalog.
+ */
 export type RunPodPublicEndpointId
   = | 'black-forest-labs-flux-1-schnell' // Standard "AI Image" engine — $0.0024/megapixel (added 2026-07-15, see buildRunPodFluxSchnellInput() comment)
     | 'black-forest-labs-flux-1-dev' // Mid-tier "AI Image" engine — $0.02/megapixel
@@ -207,8 +209,10 @@ function decodeRunPodPublicJobId(jobId: string): { endpointId: string; requestId
   return { endpointId: rest.slice(0, lastSep), requestId: rest.slice(lastSep + 2) };
 }
 
-/** Submits a job to one of the 3 public endpoints above. Mirrors
- * submitFalJob()'s shape so /api/generate barely has to branch. */
+/**
+ * Submits a job to one of the 3 public endpoints above. Mirrors
+ * submitFalJob()'s shape so /api/generate barely has to branch.
+ */
 export async function submitRunPodPublicJob(
   endpointId: RunPodPublicEndpointId,
   input: Record<string, unknown>,
@@ -228,8 +232,10 @@ export async function submitRunPodPublicJob(
   return { id: encodeRunPodPublicJobId(endpointId, data.id), status: 'IN_QUEUE' };
 }
 
-/** Normalized status shape shared with fal's FalJobStatus — GenerateForm.tsx
- * and /api/generate/status render both the same way. */
+/**
+ * Normalized status shape shared with fal's FalJobStatus — GenerateForm.tsx
+ * and /api/generate/status render both the same way.
+ */
 export type RunPodPublicJobStatus = {
   id: string;
   status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
@@ -241,7 +247,8 @@ export type RunPodPublicJobStatus = {
   error?: string;
 };
 
-/** Checks status of a previously submitted public-endpoint job and
+/**
+ * Checks status of a previously submitted public-endpoint job and
  * normalizes RunPod's response shape into the same `{ images: [...] }` /
  * `{ result: <url> }` shape the rest of the app (RunPod worker-comfyui, fal)
  * already uses.
@@ -256,7 +263,8 @@ export type RunPodPublicJobStatus = {
  * an image URL there, `wan-2-2-i2v-720` puts a video URL there. We still
  * check the old `image_url`/`video_url` names first in case some other
  * endpoint uses them, then fall back to `result`, deciding image vs video
- * by endpointId (only `wan-2-2-i2v-720` is video). */
+ * by endpointId (only `wan-2-2-i2v-720` is video).
+ */
 export async function getRunPodPublicJobStatus(jobId: string): Promise<RunPodPublicJobStatus> {
   const { endpointId, requestId } = decodeRunPodPublicJobId(jobId);
 
@@ -319,7 +327,8 @@ export async function getRunPodPublicJobStatus(jobId: string): Promise<RunPodPub
   return { id: jobId, status: 'FAILED', error: 'RunPod public endpoint returned no image or video in the result.' };
 }
 
-/** `black-forest-labs-flux-1-schnell` — text-to-image, Standard engine.
+/**
+ * `black-forest-labs-flux-1-schnell` — text-to-image, Standard engine.
  * Added 2026-07-15 to replace the dedicated worker-comfyui Flux Schnell pod
  * (GPU-hour billed, idle time still costs money) with RunPod Hub's own
  * Public Endpoint for the same model ($0.0024/megapixel, zero idle cost —
@@ -329,7 +338,8 @@ export async function getRunPodPublicJobStatus(jobId: string): Promise<RunPodPub
  * inference steps (vs Dev's 28) and it does NOT support img2img/reference
  * images on this endpoint, so /api/generate keeps using the dedicated
  * worker-comfyui endpoint (buildFluxImg2ImgInput) for Standard-engine
- * generations that include a reference image. */
+ * generations that include a reference image.
+ */
 export function buildRunPodFluxSchnellInput(params: {
   prompt: string;
   width?: number;
@@ -366,12 +376,14 @@ export function buildRunPodFluxDevInput(params: {
   };
 }
 
-/** `google-nano-banana-2-edit` — Top-tier engine. Requires at least one
+/**
+ * `google-nano-banana-2-edit` — Top-tier engine. Requires at least one
  * reference image (RunPod's Public Endpoint catalog only offers the "Edit"
  * variant of Nano Banana 2, no pure text-to-image mode) — /api/generate's
  * route falls back to buildRunPodFluxDevInput() when the user hasn't
  * uploaded a reference image, per the 2026-07-14 decision to keep Top-tier
- * usable either way rather than blocking generation outright. */
+ * usable either way rather than blocking generation outright.
+ */
 export function buildRunPodNanoBanana2EditInput(params: {
   prompt: string;
   imageUrl: string;
@@ -414,13 +426,15 @@ export function buildNanoBanana2FaceSwapInput(params: {
   };
 }
 
-/** `qwen-image-t2i` — Qwen Image, text-to-image only "AI Image" engine.
+/**
+ * `qwen-image-t2i` — Qwen Image, text-to-image only "AI Image" engine.
  * Added 2026-07-15 alongside `wan-2-6-t2i` at the user's request. No
  * reference-image (edit) mode on this endpoint — /api/generate always calls
  * it with a plain text prompt regardless of whether the user attached a
  * reference image (the reference is simply ignored for this engine, same as
  * any other pure text-to-image model). Input shape confirmed via
- * console.runpod.io/hub/playground/image/qwen-image-t2i -> API tab. */
+ * console.runpod.io/hub/playground/image/qwen-image-t2i -> API tab.
+ */
 export function buildQwenImageInput(params: {
   prompt: string;
   negativePrompt?: string;
@@ -437,11 +451,13 @@ export function buildQwenImageInput(params: {
   };
 }
 
-/** `wan-2-6-t2i` — Alibaba WAN 2.6, text-to-image only "AI Image" engine.
+/**
+ * `wan-2-6-t2i` — Alibaba WAN 2.6, text-to-image only "AI Image" engine.
  * Added 2026-07-15 alongside `qwen-image-t2i` at the user's request. Same
  * "no reference-image mode" caveat as buildQwenImageInput() above. Input
  * shape confirmed via console.runpod.io/hub/playground/image/wan-2-6-t2i ->
- * API tab. */
+ * API tab.
+ */
 export function buildWanT2IInput(params: {
   prompt: string;
   width?: number;

@@ -37,8 +37,10 @@ type ToolLabels = {
   faceSwapStyleLabels: Record<FaceSwapStyleId, string>;
 };
 
-/** Shared image-generation tool card (Photo Restore / Face Swap) — both take
- * just an image URL and a single button, no prompt required. */
+/**
+ * Shared image-generation tool card (Photo Restore / Face Swap) — both take
+ * just an image URL and a single button, no prompt required.
+ */
 function ImageToolCard(props: {
   kind: 'photo_restore' | 'face_swap';
   title: string;
@@ -174,8 +176,16 @@ function ImageToolCard(props: {
       {resultSrc && (
         <div className="flex flex-col gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={resultSrc} alt={props.title} className="max-w-full rounded-md" />
-          <a href={resultSrc} download={`${props.kind}.png`} className="text-sm text-primary underline">
+          <img
+            src={resultSrc}
+            alt={props.title}
+            className="max-w-full rounded-md"
+          />
+          <a
+            href={resultSrc}
+            download={`${props.kind}.png`}
+            className="text-sm text-primary underline"
+          >
             {labels.downloadLabel}
           </a>
         </div>
@@ -249,8 +259,10 @@ function encodeWav(buffer: AudioBuffer): Blob {
   return new Blob([arrayBuffer], { type: 'audio/wav' });
 }
 
-/** Sample-and-hold: repeats every Nth sample, giving a robotic/lo-fi texture
- * distinct from a plain pitch shift. Mutates and returns the same buffer. */
+/**
+ * Sample-and-hold: repeats every Nth sample, giving a robotic/lo-fi texture
+ * distinct from a plain pitch shift. Mutates and returns the same buffer.
+ */
 function applyRobotEffect(buffer: AudioBuffer): AudioBuffer {
   const HOLD_SAMPLES = 7;
   for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
@@ -404,8 +416,18 @@ function VoiceChangerCard(props: { labels: ToolLabels }) {
           {/* key={resultUrl} forces a fresh <audio> element per result so the
            * browser always loads the new blob instead of reusing a cached one. */}
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-          <audio key={resultUrl} src={resultUrl} controls autoPlay className="w-full" />
-          <a href={resultUrl} download="voice-changed.wav" className="text-sm text-primary underline">
+          <audio
+            key={resultUrl}
+            src={resultUrl}
+            controls
+            autoPlay
+            className="w-full"
+          />
+          <a
+            href={resultUrl}
+            download="voice-changed.wav"
+            className="text-sm text-primary underline"
+          >
             {labels.downloadLabel}
           </a>
         </div>

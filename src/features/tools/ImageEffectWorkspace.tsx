@@ -1,22 +1,22 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
 import type {
   CameraAngleId,
   ColorPaletteId,
   EffectId,
   StyleId,
 } from '@/libs/ImagePresets';
-import type { ChangeEvent } from 'react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { COLOR_PALETTE_FILTERS, STYLE_FILTERS } from '@/libs/ColorFilters';
 import {
   CAMERA_ANGLE_PRESETS,
   COLOR_PALETTE_PRESETS,
   EFFECT_PRESETS,
   STYLE_PRESETS,
 } from '@/libs/ImagePresets';
-import { COLOR_PALETTE_FILTERS, STYLE_FILTERS } from '@/libs/ColorFilters';
 import {
   CAMERA_ANGLE_VISUALS,
   COLOR_PALETTE_VISUALS,
@@ -106,7 +106,7 @@ function applyColorFilter(pngDataUrl: string, filter: string): Promise<string> {
         // (e.g. a tainted-canvas SecurityError if the source ever turns out
         // to be a cross-origin URL instead of a data: URI) — logged so it's
         // visible in devtools if this path ever actually fires.
-        // eslint-disable-next-line no-console
+
         console.error('applyColorFilter failed, showing ungraded image', err);
         resolve(pngDataUrl);
       }

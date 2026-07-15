@@ -35,20 +35,20 @@ const NONE_VISUAL: PresetVisual = {
 };
 
 export const STYLE_VISUALS: Record<string, PresetVisual> = {
-  none: NONE_VISUAL,
-  photorealistic: { kind: 'gradient', gradient: 'linear-gradient(135deg, #8ec5fc, #e0c3a1)', icon: 'camera' },
-  cinematic: { kind: 'gradient', gradient: 'linear-gradient(135deg, #1a1a2e, #c9922f)', icon: 'clapperboard' },
-  anime: { kind: 'gradient', gradient: 'linear-gradient(135deg, #ff9ecb, #7ee8fa, #a78bfa)', icon: 'sparkles' },
-  illustration: { kind: 'gradient', gradient: 'linear-gradient(135deg, #ff8a5c, #ffd76e, #ff6bb0)', icon: 'brush' },
+  'none': NONE_VISUAL,
+  'photorealistic': { kind: 'gradient', gradient: 'linear-gradient(135deg, #8ec5fc, #e0c3a1)', icon: 'camera' },
+  'cinematic': { kind: 'gradient', gradient: 'linear-gradient(135deg, #1a1a2e, #c9922f)', icon: 'clapperboard' },
+  'anime': { kind: 'gradient', gradient: 'linear-gradient(135deg, #ff9ecb, #7ee8fa, #a78bfa)', icon: 'sparkles' },
+  'illustration': { kind: 'gradient', gradient: 'linear-gradient(135deg, #ff8a5c, #ffd76e, #ff6bb0)', icon: 'brush' },
   '3d': { kind: 'gradient', gradient: 'linear-gradient(135deg, #6a5cff, #2fd4d4)', icon: 'box' },
-  watercolor: { kind: 'gradient', gradient: 'linear-gradient(135deg, #a8d8ea, #f7cac9, #d4f0c0)', icon: 'droplet' },
-  cyberpunk: { kind: 'gradient', gradient: 'linear-gradient(135deg, #ff2d75, #00e5ff, #7b2ff7)', icon: 'zap' },
-  fantasy: { kind: 'gradient', gradient: 'linear-gradient(135deg, #3a1c71, #d76d77, #ffaf7b)', icon: 'wand-sparkles' },
-  noir: { kind: 'gradient', gradient: 'linear-gradient(135deg, #0a0a0a, #4a4a4a, #f2f2f2)', icon: 'contrast' },
-  retroPop: { kind: 'gradient', gradient: 'linear-gradient(135deg, #ff3b3b, #ffd23b, #2f6fed)', icon: 'disc' },
-  darkAcademia: { kind: 'gradient', gradient: 'linear-gradient(135deg, #3e2723, #6d4c41, #2e4a3c)', icon: 'book-open' },
-  vintagePolaroid: { kind: 'gradient', gradient: 'linear-gradient(135deg, #f2e6d0, #d8b98e, #f2e6d0)', icon: 'image' },
-  comicBook: { kind: 'gradient', gradient: 'linear-gradient(135deg, #e8322a, #ffd93b, #2f6fed)', icon: 'message-square' },
+  'watercolor': { kind: 'gradient', gradient: 'linear-gradient(135deg, #a8d8ea, #f7cac9, #d4f0c0)', icon: 'droplet' },
+  'cyberpunk': { kind: 'gradient', gradient: 'linear-gradient(135deg, #ff2d75, #00e5ff, #7b2ff7)', icon: 'zap' },
+  'fantasy': { kind: 'gradient', gradient: 'linear-gradient(135deg, #3a1c71, #d76d77, #ffaf7b)', icon: 'wand-sparkles' },
+  'noir': { kind: 'gradient', gradient: 'linear-gradient(135deg, #0a0a0a, #4a4a4a, #f2f2f2)', icon: 'contrast' },
+  'retroPop': { kind: 'gradient', gradient: 'linear-gradient(135deg, #ff3b3b, #ffd23b, #2f6fed)', icon: 'disc' },
+  'darkAcademia': { kind: 'gradient', gradient: 'linear-gradient(135deg, #3e2723, #6d4c41, #2e4a3c)', icon: 'book-open' },
+  'vintagePolaroid': { kind: 'gradient', gradient: 'linear-gradient(135deg, #f2e6d0, #d8b98e, #f2e6d0)', icon: 'image' },
+  'comicBook': { kind: 'gradient', gradient: 'linear-gradient(135deg, #e8322a, #ffd93b, #2f6fed)', icon: 'message-square' },
 };
 
 export const COLOR_PALETTE_VISUALS: Record<string, PresetVisual> = {

@@ -97,11 +97,14 @@ export const AdminClient = (props: { labels: AdminLabels }) => {
             key={r}
             type="button"
             onClick={() => setRange(r)}
-            className={`rounded-md px-4 py-2 text-sm font-medium ${
-              range === r
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-card text-muted-foreground'
-            }`}
+            className={`
+              rounded-md px-4 py-2 text-sm font-medium
+              ${
+          range === r
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-card text-muted-foreground'
+          }
+            `}
           >
             {rangeButtonLabel[r]}
           </button>
@@ -109,7 +112,12 @@ export const AdminClient = (props: { labels: AdminLabels }) => {
       </div>
 
       {failed && (
-        <div className="rounded-md bg-card p-4 text-sm font-medium text-destructive">{labels.failed}</div>
+        <div className="
+          rounded-md bg-card p-4 text-sm font-medium text-destructive
+        "
+        >
+          {labels.failed}
+        </div>
       )}
 
       {!stats && !failed && (
@@ -139,7 +147,11 @@ export const AdminClient = (props: { labels: AdminLabels }) => {
               {stats.totalGenerations.toLocaleString('mn-MN')}
               )
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="
+              grid grid-cols-2 gap-3
+              sm:grid-cols-4
+            "
+            >
               {Object.entries(KIND_LABEL_KEY).map(([kind, labelKey]) => (
                 <div key={kind}>
                   <div className="text-xs text-muted-foreground">{labels[labelKey]}</div>
@@ -160,7 +172,14 @@ export const AdminClient = (props: { labels: AdminLabels }) => {
               : (
                   <div className="flex flex-col gap-2">
                     {stats.recentOrders.map(order => (
-                      <div key={order.id} className="flex items-center justify-between border-b border-border pb-2 text-sm last:border-0">
+                      <div
+                        key={order.id}
+                        className="
+                          flex items-center justify-between border-b
+                          border-border pb-2 text-sm
+                          last:border-0
+                        "
+                      >
                         <span>{order.packageId}</span>
                         <span className="text-muted-foreground">
                           {order.creditsGranted}

@@ -136,7 +136,11 @@ export const BillingClient = (props: {
                   </button>
                 )
               : (
-                  <span className="inline-block h-8 w-16 animate-pulse rounded bg-muted align-middle" />
+                  <span className="
+                    inline-block h-8 w-16 animate-pulse rounded-sm bg-muted
+                    align-middle
+                  "
+                  />
                 )}
         </div>
         <div className="mt-1 text-xs text-muted-foreground">{props.labels.creditCostNote}</div>
@@ -150,7 +154,12 @@ export const BillingClient = (props: {
         "
         >
           {STARTER_PACKAGES.map(pkg => (
-            <div key={pkg.id} className="flex flex-col justify-between gap-3 rounded-md bg-card p-5">
+            <div
+              key={pkg.id}
+              className="
+                flex flex-col justify-between gap-3 rounded-md bg-card p-5
+              "
+            >
               <div>
                 <div className="text-lg font-semibold">{pkg.nameMn}</div>
                 <div className="mt-1 text-2xl font-bold">
@@ -180,7 +189,12 @@ export const BillingClient = (props: {
         "
         >
           {BUNDLE_PACKAGES.map(pkg => (
-            <div key={pkg.id} className="flex flex-col justify-between gap-4 rounded-md bg-card p-5">
+            <div
+              key={pkg.id}
+              className="
+                flex flex-col justify-between gap-4 rounded-md bg-card p-5
+              "
+            >
               <div>
                 <div className="text-lg font-semibold">{pkg.nameMn}</div>
                 <div className="mt-1 text-2xl font-bold">
@@ -207,7 +221,12 @@ export const BillingClient = (props: {
       </div>
 
       {errorText && (
-        <div className="rounded-md bg-card p-4 text-sm font-medium text-destructive">{errorText}</div>
+        <div className="
+          rounded-md bg-card p-4 text-sm font-medium text-destructive
+        "
+        >
+          {errorText}
+        </div>
       )}
 
       {checkout && (
@@ -228,7 +247,12 @@ export const BillingClient = (props: {
           )}
 
           {checkout.shortUrl && (
-            <a href={checkout.shortUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
+            <a
+              href={checkout.shortUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-primary underline"
+            >
               QPay аппаар нээх
             </a>
           )}

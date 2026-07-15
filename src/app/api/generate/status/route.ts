@@ -9,10 +9,12 @@ import { generationSchema } from '@/models/Schema';
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED', 'CANCELLED', 'TIMED_OUT']);
 
-/** Maps our app-level `generation.kind` (flux/wan/photo_restore/face_swap)
+/**
+ * Maps our app-level `generation.kind` (flux/wan/photo_restore/face_swap)
  * to the RunPod endpoint it actually runs on — photo_restore shares the
  * Flux endpoint (same worker, different workflow graph), so it isn't its
- * own RunPod GenerationKind. */
+ * own RunPod GenerationKind.
+ */
 function toRunPodKind(dbKind: string): GenerationKind {
   if (dbKind === 'wan') {
     return 'wan';

@@ -24,9 +24,11 @@ export const HistoryStrip = (props: {
   title: string;
   emptyLabel: string;
   refreshKey: number;
-  /** Wider gallery-style grid (more, smaller-relative columns) instead of
+  /**
+   * Wider gallery-style grid (more, smaller-relative columns) instead of
    * the default narrow sidebar strip — added 2026-07-15 for Face Swap's
-   * imagine.art-style full-width history section below the form. */
+   * imagine.art-style full-width history section below the form.
+   */
   wide?: boolean;
   // Added 2026-07-15 — history thumbnails used to be plain, unclickable
   // <img> tags with no way to see the full-size image or download it (the
@@ -139,7 +141,9 @@ export const HistoryStrip = (props: {
 
       {lightboxSrc && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
+          className="
+            fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6
+          "
           onClick={() => setLightboxSrc(null)}
         >
           <div
@@ -163,7 +167,9 @@ export const HistoryStrip = (props: {
               <button
                 type="button"
                 onClick={() => setLightboxSrc(null)}
-                className="flex items-center gap-1 text-sm font-medium text-white"
+                className="
+                  flex items-center gap-1 text-sm font-medium text-white
+                "
               >
                 <X className="size-4" />
                 {props.closeLabel}

@@ -454,7 +454,9 @@ export const GenerateForm = (props: {
                               filename: firstImage.filename,
                               caption: item.prompt,
                             })}
-                            className="group relative block overflow-hidden rounded-md"
+                            className="
+                              group relative block overflow-hidden rounded-md
+                            "
                             aria-label={props.labels.historyView}
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -555,15 +557,18 @@ export const GenerateForm = (props: {
                   <button
                     type="button"
                     className="
-                      flex w-full items-center justify-between rounded-md
-                      border border-input bg-transparent px-3 py-2 text-sm
+                      flex w-full items-center justify-between rounded-md border
+                      border-input bg-transparent px-3 py-2 text-sm
                     "
                   >
                     <span className="flex flex-col items-start text-left">
                       <span className="font-medium">{props.labels.engineNames[engine]}</span>
                       <span className="text-xs text-muted-foreground">{props.labels.engineHints[engine]}</span>
                     </span>
-                    <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
+                    <ChevronDownIcon className="
+                      size-4 shrink-0 text-muted-foreground
+                    "
+                    />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -857,7 +862,9 @@ export const GenerateForm = (props: {
           overlay so it works regardless of where it sits in the DOM tree. */}
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
+          className="
+            fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6
+          "
           onClick={() => setLightboxImage(null)}
         >
           <div

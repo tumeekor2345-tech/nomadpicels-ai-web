@@ -1,7 +1,7 @@
 'use client';
 
-import type { FaceSwapStyleId } from '@/libs/FaceSwapStyles';
 import type { ChangeEvent } from 'react';
+import type { FaceSwapStyleId } from '@/libs/FaceSwapStyles';
 import { X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -65,10 +65,12 @@ type Labels = {
   historyLightboxClose: string;
 };
 
-/** One upload slot: shows a preview thumbnail with a remove button once a
+/**
+ * One upload slot: shows a preview thumbnail with a remove button once a
  * file's been picked (and uploaded to /api/uploads), or an "upload" button
  * before that. Shared between the single style-mode upload and the two
- * swap-mode uploads (target + face) to avoid tripling this JSX. */
+ * swap-mode uploads (target + face) to avoid tripling this JSX.
+ */
 function UploadSlot(props: {
   label: string;
   buttonLabel: string;
@@ -98,7 +100,7 @@ function UploadSlot(props: {
               <img
                 src={props.preview}
                 alt=""
-                className="h-28 w-28 rounded-md object-cover"
+                className="size-28 rounded-md object-cover"
               />
               {!props.uploading && (
                 <button
@@ -106,9 +108,9 @@ function UploadSlot(props: {
                   onClick={props.onClear}
                   aria-label={props.removeLabel}
                   className="
-                    absolute -right-2 -top-2 flex size-6 items-center
-                    justify-center rounded-full bg-destructive
-                    text-destructive-foreground
+                    text-destructive-foreground absolute -top-2 -right-2 flex
+                    size-6 items-center justify-center rounded-full
+                    bg-destructive
                   "
                 >
                   <X className="size-3.5" />
@@ -116,8 +118,8 @@ function UploadSlot(props: {
               )}
               {props.uploading && (
                 <div className="
-                  absolute inset-0 flex items-center justify-center
-                  rounded-md bg-black/40 text-[10px] text-white
+                  absolute inset-0 flex items-center justify-center rounded-md
+                  bg-black/40 text-[10px] text-white
                 "
                 >
                   ...
@@ -303,7 +305,9 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
               onClick={() => setMode('style')}
               className={cn(
                 'flex-1 rounded-sm py-1.5 text-sm font-medium transition-colors',
-                mode === 'style' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
+                mode === 'style'
+                  ? 'bg-primary text-primary-foreground'
+                  : `text-muted-foreground`,
               )}
             >
               {labels.modeStyleLabel}
@@ -313,7 +317,9 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
               onClick={() => setMode('swap')}
               className={cn(
                 'flex-1 rounded-sm py-1.5 text-sm font-medium transition-colors',
-                mode === 'swap' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
+                mode === 'swap'
+                  ? 'bg-primary text-primary-foreground'
+                  : `text-muted-foreground`,
               )}
             >
               {labels.modeSwapLabel}
@@ -337,7 +343,10 @@ export const FaceSwapWorkspace = (props: { labels: Labels }) => {
                       style === id ? 'border-primary' : 'border-transparent',
                     )}
                   >
-                    <div className="aspect-square w-full overflow-hidden bg-muted">
+                    <div className="
+                      aspect-square w-full overflow-hidden bg-muted
+                    "
+                    >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={FACE_SWAP_STYLE_IMAGES[id]}
