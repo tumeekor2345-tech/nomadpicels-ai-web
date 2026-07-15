@@ -137,16 +137,6 @@ export const GenerateForm = (props: {
     referenceInfluenceLow: string;
     referenceInfluenceMedium: string;
     referenceInfluenceHigh: string;
-    enhanceButton: string;
-    enhancing: string;
-    enhancePreviewTitle: string;
-    enhanceEnglishPreviewTitle: string;
-    enhanceTranslating: string;
-    enhanceUse: string;
-    enhanceCancel: string;
-    enhanceNotConfigured: string;
-    enhanceFailed: string;
-    enhanceBlocked: string;
     finalPromptTitle: string;
     finalPromptHint: string;
     finalPromptLoading: string;
@@ -184,11 +174,6 @@ export const GenerateForm = (props: {
   const [referenceImage, setReferenceImage] = useState<{ dataUrl: string; base64: string } | null>(null);
   const [referenceInfluence, setReferenceInfluence] = useState<ReferenceInfluence>('medium');
   const referenceInputRef = useRef<HTMLInputElement | null>(null);
-  const [enhancing, setEnhancing] = useState(false);
-  const [enhancedMongolian, setEnhancedMongolian] = useState<string | null>(null);
-  const [englishPreview, setEnglishPreview] = useState<string | null>(null);
-  const [translatingPreview, setTranslatingPreview] = useState(false);
-  const [enhanceError, setEnhanceError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -212,12 +197,16 @@ export const GenerateForm = (props: {
   // history image opens it full-size here, with its own download link.
   const [lightboxImage, setLightboxImage] = useState<{ src: string; filename: string; caption: string } | null>(null);
 
-  // "Эцсийн Prompt" — stage 3 of the 4-stage pipeline in
-  // src/libs/PromptPipeline.ts, exposed 2026-07-09 so the user can see (and
-  // edit) the exact English text that will reach Flux/Wan, instead of the
-  // translation + ethnicity/composition reinforcement happening invisibly
-  // server-side. Auto-refreshes (debounced) whenever the source prompt/style/
-  // lens changes, UNLESS the user has hand-edited the box — editing it stops
+  // "Эцсийн Prompt" — stage 3 of the pipeline in src/libs/PromptPipeline.ts,
+  // exposed 2026-07-09 so the user can see (and edit) the exact English text
+  // that will reach Flux/Wan, instead of the pipeline running invisibly
+  // server-side. Since 2026-07-16 this box also carries the automatic Claude
+  // Haiku prompt enhancement (see PromptPipeline.ts) — the old separate
+  // "Санаагаа сайжруул" button/preview flow was removed at the user's
+  // request in favor of always auto-enhancing from whatever keywords the
+  // user typed, with this box as the one place to see/adjust the result.
+  // Auto-refreshes (debounced) whenever the source prompt/style/lens
+  // changes, UNLESS the user has hand-edited the box — editing it stops
   // auto-refresh from clobbering their edit until they explicitly click
   // "Шинэчлэх". Whatever is in this box at submit time is sent as
   // `finalPromptOverride` and used as-is server-side.
@@ -240,7 +229,7 @@ export const GenerateForm = (props: {
       const res = await fetch('/api/generate/preview-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: source }),
+        body: JSON.stringify({ prompt: source, kind }),
       });
       const data = await res.json();
 
@@ -275,7 +264,7 @@ export const GenerateForm = (props: {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourcePromptForPreview, finalPromptEdited]);
+  }, [sourcePromptForPreview, finalPromptEdited, kind]);
 
   useEffect(() => {
     let cancelled = false;
@@ -432,74 +421,6 @@ export const GenerateForm = (props: {
     reader.readAsDataURL(file);
     // Allow re-selecting the same file later after removing it.
     e.target.value = '';
-  };
-
-  const handleEnhance = async () => {
-    if (!prompt.trim() || enhancing) {
-      return;
-    }
-
-    setEnhancing(true);
-    setEnhanceError(null);
-    setEnhancedMongolian(null);
-    setEnglishPreview(null);
-
-    try {
-      const res = await fetch('/api/generate/enhance-prompt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, kind }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (data.error === 'not_configured') {
-          setEnhanceError(props.labels.enhanceNotConfigured);
-        } else if (data.error === 'prompt_blocked') {
-          setEnhanceError(props.labels.enhanceBlocked);
-        } else {
-          setEnhanceError(props.labels.enhanceFailed);
-        }
-        return;
-      }
-
-      setEnhancedMongolian(data.enhancedPrompt);
-      setEnglishPreview(data.englishPreview);
-    } catch {
-      setEnhanceError(props.labels.enhanceFailed);
-    } finally {
-      setEnhancing(false);
-    }
-  };
-
-  // Called when the user finishes editing the Mongolian enhanced-idea box
-  // (onBlur) — refreshes the read-only English translation preview next to
-  // it. Deliberately a plain translation call, not another full Claude
-  // enhancement (see src/app/api/generate/translate-prompt/route.ts).
-  const handlePreviewBlur = async () => {
-    if (!enhancedMongolian || !enhancedMongolian.trim()) {
-      return;
-    }
-
-    setTranslatingPreview(true);
-
-    try {
-      const res = await fetch('/api/generate/translate-prompt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: enhancedMongolian }),
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        setEnglishPreview(data.translated);
-      }
-    } catch {
-      // Keep the previous preview on failure — not worth surfacing an error
-      // for a background refresh.
-    } finally {
-      setTranslatingPreview(false);
-    }
   };
 
   const hasResult = images.length > 0 || !!videoUrl || !!rawOutput;
@@ -786,74 +707,6 @@ export const GenerateForm = (props: {
               placeholder={props.labels.promptPlaceholder}
               rows={5}
             />
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={!prompt.trim() || enhancing}
-              onClick={handleEnhance}
-              className="self-start"
-            >
-              {enhancing ? props.labels.enhancing : props.labels.enhanceButton}
-            </Button>
-
-            {enhanceError && (
-              <div className="text-xs font-medium text-destructive">{enhanceError}</div>
-            )}
-
-            {enhancedMongolian !== null && (
-              <div className="
-                flex flex-col gap-3 rounded-md border border-input bg-muted p-3
-              "
-              >
-                <div className="flex flex-col gap-1.5">
-                  <div className="text-xs font-semibold">{props.labels.enhancePreviewTitle}</div>
-                  <Textarea
-                    value={enhancedMongolian}
-                    onChange={e => setEnhancedMongolian(e.target.value)}
-                    onBlur={handlePreviewBlur}
-                    rows={4}
-                    className="bg-background"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <div className="text-xs font-semibold">{props.labels.enhanceEnglishPreviewTitle}</div>
-                  <div className="
-                    rounded-md bg-background p-2 text-sm text-muted-foreground
-                  "
-                  >
-                    {translatingPreview ? props.labels.enhanceTranslating : englishPreview}
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => {
-                      setPrompt(enhancedMongolian);
-                      setEnhancedMongolian(null);
-                      setEnglishPreview(null);
-                    }}
-                  >
-                    {props.labels.enhanceUse}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setEnhancedMongolian(null);
-                      setEnglishPreview(null);
-                    }}
-                  >
-                    {props.labels.enhanceCancel}
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="

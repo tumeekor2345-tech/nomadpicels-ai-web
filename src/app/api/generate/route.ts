@@ -174,21 +174,31 @@ export async function POST(request: Request) {
   }
 
   // 4-stage prompt pipeline (see src/libs/PromptPipeline.ts for the full
-  // breakdown: translate -> reinforce ethnicity/composition -> preview/edit
-  // -> send to RunPod). Stage 3 is client-side: GenerateForm.tsx calls
-  // POST /api/generate/preview-prompt to show the user the exact text stage
-  // 1-2 would produce, and if the user edits that box, the edited text comes
-  // back here as `finalPromptOverride` and is used AS-IS — stages 1-2 are
-  // skipped entirely for that generation. Added 2026-07-09 after several
-  // rounds of invisible reinforcement made the bust-crop framing bug hard to
-  // debug from outside; the user asked to expose the real final prompt
-  // rather than keep guessing at it blind.
+  // breakdown: auto-enhance -> reinforce composition -> preview/edit -> send
+  // to RunPod). Stage 1 now runs Claude Haiku automatically on every
+  // generation (no manual "Санаагаа сайжруул" step anymore, per the user's
+  // 2026-07-16 request). Stage 3 is still client-side: GenerateForm.tsx
+  // calls POST /api/generate/preview-prompt to show the user the exact text
+  // stages 1-2 would produce, and if the user edits that box, the edited
+  // text comes back here as `finalPromptOverride` and is used AS-IS — stages
+  // 1-2 are skipped entirely for that generation.
   const hasOverride = needsUserPrompt
     && typeof body.finalPromptOverride === 'string'
     && body.finalPromptOverride.trim().length > 0;
-  const modelPrompt = needsUserPrompt
-    ? (hasOverride ? body.finalPromptOverride.trim() : await buildFinalModelPrompt(body.prompt))
-    : body.prompt;
+
+  let modelPrompt: string = body.prompt;
+  if (needsUserPrompt && !hasOverride) {
+    const pipelineResult = await buildFinalModelPrompt(body.prompt, body.kind as 'flux' | 'wan');
+    if (!pipelineResult.ok) {
+      return NextResponse.json(
+        { error: 'prompt_blocked', message: 'This prompt violates our content policy.' },
+        { status: 400 },
+      );
+    }
+    modelPrompt = pipelineResult.prompt;
+  } else if (hasOverride) {
+    modelPrompt = body.finalPromptOverride.trim();
+  }
 
   if (needsUserPrompt && modelPrompt !== body.prompt && isPromptBlocked(modelPrompt)) {
     return NextResponse.json(
